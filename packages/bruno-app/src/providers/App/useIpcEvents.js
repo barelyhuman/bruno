@@ -19,13 +19,31 @@ import {
   runRequestEvent,
   scriptEnvironmentUpdateEvent
 } from 'providers/ReduxStore/slices/collections';
-import { collectionAddEnvFileEvent, openCollectionEvent, hydrateCollectionWithUiStateSnapshot } from 'providers/ReduxStore/slices/collections/actions';
+import {
+  collectionAddEnvFileEvent,
+  hydrateCollectionWithUiStateSnapshot,
+  openCollectionEvent
+} from 'providers/ReduxStore/slices/collections/actions';
 import toast from 'react-hot-toast';
 import { useDispatch } from 'react-redux';
 import { isElectron } from 'utils/common/platform';
-import { globalEnvironmentsUpdateEvent, updateGlobalEnvironments } from 'providers/ReduxStore/slices/global-environments';
-import { collectionAddOauth2CredentialsByUrl, updateCollectionLoadingState } from 'providers/ReduxStore/slices/collections/index';
+import {
+  globalEnvironmentsUpdateEvent,
+  updateGlobalEnvironments
+} from 'providers/ReduxStore/slices/global-environments';
+import {
+  collectionAddOauth2CredentialsByUrl,
+  updateCollectionLoadingState
+} from 'providers/ReduxStore/slices/collections/index';
 import { addLog } from 'providers/ReduxStore/slices/logs';
+import {
+  wsClear,
+  wsConnectError,
+  wsConnectSuccess,
+  wsDisconnect,
+  wsMessageReceived,
+  wsMessageSent
+} from 'providers/ReduxStore/slices/websockets';
 
 const useIpcEvents = () => {
   const dispatch = useDispatch();
@@ -112,9 +130,12 @@ const useIpcEvents = () => {
       dispatch(scriptEnvironmentUpdateEvent(val));
     });
 
-    const removeGlobalEnvironmentVariablesUpdateListener = ipcRenderer.on('main:global-environment-variables-update', (val) => {
-      dispatch(globalEnvironmentsUpdateEvent(val));
-    });
+    const removeGlobalEnvironmentVariablesUpdateListener = ipcRenderer.on(
+      'main:global-environment-variables-update',
+      (val) => {
+        dispatch(globalEnvironmentsUpdateEvent(val));
+      }
+    );
 
     const removeCollectionRenamedListener = ipcRenderer.on('main:collection-renamed', (val) => {
       dispatch(collectionRenamedEvent(val));
@@ -132,13 +153,15 @@ const useIpcEvents = () => {
       dispatch(processEnvUpdateEvent(val));
     });
 
-    const removeConsoleLogListener = ipcRenderer.on('main:console-log', (val) => { 
-      console[val.type](...val.args);    
-      dispatch(addLog({
-        type: val.type,
-        args: val.args,
-        timestamp: new Date().toISOString()
-      }));
+    const removeConsoleLogListener = ipcRenderer.on('main:console-log', (val) => {
+      console[val.type](...val.args);
+      dispatch(
+        addLog({
+          type: val.type,
+          args: val.args,
+          timestamp: new Date().toISOString()
+        })
+      );
     });
 
     const removeConfigUpdatesListener = ipcRenderer.on('main:bruno-config-update', (val) =>
@@ -183,6 +206,39 @@ const useIpcEvents = () => {
       dispatch(updateCollectionLoadingState(val));
     });
 
+    // WebSocket IPC listeners
+    const removeWsConnectListener = ipcRenderer.on('main:ws-connect', (payload) => {
+      dispatch(wsConnectSuccess(payload));
+    });
+
+    const removeWsOpenListener = ipcRenderer.on('main:ws-open', (payload) => {
+      console.log('connection open');
+    });
+
+    const removeWsDisconnectListener = ipcRenderer.on('main:ws-disconnect', (payload) => {
+      dispatch(wsDisconnect(payload));
+    });
+
+    const removeWsErrorListener = ipcRenderer.on('main:ws-error', (payload) => {
+      dispatch(wsConnectError(payload));
+    });
+
+    const removeWsMessageListener = ipcRenderer.on('main:ws-message', (payload) => {
+      const _payload = {
+        ...payload,
+        content: Buffer.from(payload.data).toString()
+      };
+      dispatch(wsMessageReceived(_payload));
+    });
+
+    const removeWsMessageSentListener = ipcRenderer.on('main:ws-message-sent', (payload) => {
+      dispatch(wsMessageSent(payload));
+    });
+
+    const removeWsClearListener = ipcRenderer.on('main:ws-clear', (payload) => {
+      dispatch(wsClear(payload));
+    });
+
     return () => {
       removeCollectionTreeUpdateListener();
       removeOpenCollectionListener();
@@ -204,6 +260,13 @@ const useIpcEvents = () => {
       removeSnapshotHydrationListener();
       removeCollectionOauth2CredentialsUpdatesListener();
       removeCollectionLoadingStateListener();
+      removeWsConnectListener();
+      removeWsDisconnectListener();
+      removeWsErrorListener();
+      removeWsMessageListener();
+      removeWsMessageSentListener();
+      removeWsClearListener();
+      removeWsOpenListener();
     };
   }, [isElectron]);
 };

@@ -34,6 +34,10 @@ export const transformItem = (items = []) => {
         item.type = 'graphql';
       }
 
+      if (item.type === 'ws-request') {
+        item.type = 'ws';
+      }
+
       if (item.type === 'http-request') {
         item.type = 'http';
       }

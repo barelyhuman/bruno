@@ -3,6 +3,7 @@ import tasksMiddleware from './middlewares/tasks/middleware';
 import debugMiddleware from './middlewares/debug/middleware';
 import appReducer from './slices/app';
 import collectionsReducer from './slices/collections';
+import websocketsReducer from './slices/websockets/index';
 import tabsReducer from './slices/tabs';
 import notificationsReducer from './slices/notifications';
 import globalEnvironmentsReducer from './slices/global-environments';
@@ -22,6 +23,7 @@ export const store = configureStore({
   reducer: {
     app: appReducer,
     collections: collectionsReducer,
+    websockets: websocketsReducer,
     tabs: tabsReducer,
     notifications: notificationsReducer,
     globalEnvironments: globalEnvironmentsReducer,

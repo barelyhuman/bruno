@@ -16,7 +16,7 @@ import RunnerResults from 'components/RunnerResults';
 import VariablesEditor from 'components/VariablesEditor';
 import CollectionSettings from 'components/CollectionSettings';
 import { DocExplorer } from '@usebruno/graphql-docs';
-
+import WebSocketRequestPane from "components/RequestPane/WebSocketRequestPane" 
 import StyledWrapper from './StyledWrapper';
 import SecuritySettings from 'components/SecuritySettings';
 import FolderSettings from 'components/FolderSettings';
@@ -259,6 +259,10 @@ const RequestTabPanel = () => {
 
             {item.type === 'http-request' ? (
               <HttpRequestPane item={item} collection={collection} />
+            ) : null}
+
+            {item.type === 'ws-request' ? (
+              <WebSocketRequestPane itemUid={item.uid} request={item.request} collection={collection} />
             ) : null}
           </div>
         </section>

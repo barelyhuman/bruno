@@ -85,6 +85,10 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
       return 'http-request';
     }
 
+    if (collectionPresets.requestType === 'ws') {
+      return 'ws-request';
+    }
+
     if (collectionPresets.requestType === 'graphql') {
       return 'graphql-request';
     }
@@ -306,6 +310,22 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
                 />
                 <label htmlFor="graphql-request" className="ml-1 cursor-pointer select-none">
                   GraphQL
+                </label>
+
+                <input
+                  id="ws-request"
+                  className="ml-4 cursor-pointer"
+                  type="radio"
+                  name="requestType"
+                  onChange={(event)=>{
+                    formik.setFieldValue('requestMethod', 'GET');
+                    formik.handleChange(event);
+                  }}
+                  value="ws-request"
+                  checked={formik.values.requestType === 'ws-request'}
+                />
+                <label htmlFor="ws-request" className="ml-1 cursor-pointer select-none">
+                  Websocket
                 </label>
 
                 <input
