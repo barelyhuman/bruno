@@ -17,6 +17,8 @@ export const bruRequestToJson = (data: string | any, parsed: boolean = false): a
       requestType = 'http-request';
     } else if (requestType === 'graphql') {
       requestType = 'graphql-request';
+    } else if (requestType === 'ws') {
+      requestType = 'ws-request';
     } else {
       requestType = 'http-request';
     }
@@ -59,6 +61,8 @@ export const jsonRequestToBru = (json: any): string => {
       type = 'http';
     } else if (type === 'graphql-request') {
       type = 'graphql';
+    } else if (type === 'ws-request') {
+      type = 'ws';
     } else {
       type = 'http';
     }

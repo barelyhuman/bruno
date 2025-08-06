@@ -1,22 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { IconArrowRight, IconCode, IconDeviceFloppy } from '@tabler/icons';
+import GenerateCodeItem from 'components/Sidebar/Collections/Collection/CollectionItem/GenerateCodeItem/index';
+import SingleLineEditor from 'components/SingleLineEditor';
 import get from 'lodash/get';
-import { useDispatch } from 'react-redux';
 import { requestUrlChanged, updateRequestMethod } from 'providers/ReduxStore/slices/collections';
 import { saveRequest } from 'providers/ReduxStore/slices/collections/actions';
-import HttpMethodSelector from './HttpMethodSelector';
 import { useTheme } from 'providers/Theme';
-import { IconDeviceFloppy, IconArrowRight, IconCode } from '@tabler/icons';
-import SingleLineEditor from 'components/SingleLineEditor';
-import { isMacOS } from 'utils/common/platform';
-import StyledWrapper from './StyledWrapper';
-import GenerateCodeItem from 'components/Sidebar/Collections/Collection/CollectionItem/GenerateCodeItem/index';
+import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useDispatch } from 'react-redux';
+import { isMacOS } from 'utils/common/platform';
+import HttpMethodSelector from './HttpMethodSelector';
+import StyledWrapper from './StyledWrapper';
+import { WSConnectionStateButton } from './WSConnectionStateButton';
 
 const QueryUrl = ({ item, collection, handleRun }) => {
   const { theme, storedTheme } = useTheme();
   const dispatch = useDispatch();
   const method = item.draft ? get(item, 'draft.request.method') : get(item, 'request.method');
   const url = item.draft ? get(item, 'draft.request.url', '') : get(item, 'request.url', '');
+  const isWS = item.type === "ws-request"
   const isMac = isMacOS();
   const saveShortcut = isMac ? 'Cmd + S' : 'Ctrl + S';
   const editorRef = useRef(null);
@@ -37,9 +39,9 @@ const QueryUrl = ({ item, collection, handleRun }) => {
     if (!editorRef.current?.editor) return;
     const editor = editorRef.current.editor;
     const cursor = editor.getCursor();
-  
+
     const finalUrl = value?.trim() ?? value;
-  
+
     dispatch(
       requestUrlChanged({
         itemUid: item.uid,
@@ -47,7 +49,7 @@ const QueryUrl = ({ item, collection, handleRun }) => {
         url: finalUrl
       })
     );
-  
+
     // Restore cursor position only if URL was trimmed
     if (finalUrl !== value) {
       setTimeout(() => {
@@ -137,7 +139,9 @@ const QueryUrl = ({ item, collection, handleRun }) => {
               Save <span className="shortcut">({saveShortcut})</span>
             </span>
           </div>
-          <IconArrowRight color={theme.requestTabPanel.url.icon} strokeWidth={1.5} size={22} />
+          {!isWS ?
+            <IconArrowRight color={theme.requestTabPanel.url.icon} strokeWidth={1.5} size={22} />
+            : <WSConnectionStateButton item={item} />}
         </div>
       </div>
       {generateCodeItemModalOpen && (
