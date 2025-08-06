@@ -106,7 +106,15 @@ const darkTheme = {
     ws:{
       connected: '#8cd656',
       connectionFailed: '#f06f57',
-      connect: 'rgb(204, 204, 204)'
+      connect: 'rgb(204, 204, 204)',
+      message: {
+        sent: {
+          bg:"#6f6f6f"
+        },
+        received: {
+          bg:"#424242"
+        }
+      }
     },
     dragbar: {
       border: '#444',

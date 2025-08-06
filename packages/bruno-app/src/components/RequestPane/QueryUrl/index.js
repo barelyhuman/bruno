@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { IconArrowRight, IconCode, IconDeviceFloppy } from '@tabler/icons';
+import GenerateCodeItem from 'components/Sidebar/Collections/Collection/CollectionItem/GenerateCodeItem/index';
+import SingleLineEditor from 'components/SingleLineEditor';
 import get from 'lodash/get';
-import { useDispatch, useSelector } from 'react-redux';
 import { requestUrlChanged, updateRequestMethod } from 'providers/ReduxStore/slices/collections';
 import { saveRequest } from 'providers/ReduxStore/slices/collections/actions';
-import HttpMethodSelector from './HttpMethodSelector';
 import { useTheme } from 'providers/Theme';
-import { IconDeviceFloppy, IconArrowRight, IconCode } from '@tabler/icons';
-import SingleLineEditor from 'components/SingleLineEditor';
-import { isMacOS } from 'utils/common/platform';
-import StyledWrapper from './StyledWrapper';
-import GenerateCodeItem from 'components/Sidebar/Collections/Collection/CollectionItem/GenerateCodeItem/index';
+import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useDispatch } from 'react-redux';
+import { isMacOS } from 'utils/common/platform';
+import HttpMethodSelector from './HttpMethodSelector';
+import StyledWrapper from './StyledWrapper';
 import { WSConnectionStateButton } from './WSConnectionStateButton';
 
 const QueryUrl = ({ item, collection, handleRun }) => {

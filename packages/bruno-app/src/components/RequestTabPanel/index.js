@@ -225,7 +225,7 @@ const RequestTabPanel = () => {
   const handleRun = async () => {
     if (item.type === "ws-request") {
       dispatch(connectWebSocket({ itemUid: item.uid, url: item.request.url }))
-        .then(() => toast.success("Websocket Connected"))
+        .then(() => toast.success("Attempting Connection"))
         .catch((err) => {
           toast.custom((t) => <NetworkError onClose={() => toast.dismiss(t.id)} />, {
             duration: 5000

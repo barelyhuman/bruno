@@ -4,6 +4,13 @@ import StyledWrapper from './WebSocketRequestPane/StyledWrapper';
 import { useDispatch, useSelector } from 'react-redux';
 
 
+const formatMessageType = (d)=>{
+  return [
+    d.at(0).toUpperCase(),
+    d.slice(1).toLowerCase()
+  ].join("")
+}
+
 // TODO:(reaper) redesign
 const WebSocketRequestPane = ({ itemUid }) => {
   const dispatch = useDispatch();
@@ -55,7 +62,7 @@ const WebSocketRequestPane = ({ itemUid }) => {
               key={idx}
               className={`ws-message ${msg.type}`}
             >
-              <span className="font-mono text-xs text-fgMuted">[{msg.type}]</span>
+              <span className="!text-neutral-400">[{formatMessageType(msg.type)}]</span>
               <span>{msg.content}</span>
             </li>
           ))}

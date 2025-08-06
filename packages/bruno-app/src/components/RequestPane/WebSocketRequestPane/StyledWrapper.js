@@ -8,35 +8,35 @@ const StyledWrapper = styled.div`
     gap: 1rem;
     margin-bottom: 1rem;
   }
+
   .ws-messages {
-    background: var(--color-bg-secondary);
-    border-radius: 8px;
-    padding: 1rem;
-    border: 1px solid var(--color-border-secondary);
     min-height: 120px;
     max-height: 260px;
     overflow-y: auto;
   }
+
   .ws-message {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    border-radius: 3px;
     padding: 0.5rem 0.75rem;
-    border-radius: 6px;
     margin-bottom: 0.5rem;
     font-size: 0.95rem;
     word-break: break-word;
+
+    &.sent{
+        max-width: 50ch;
+        background: ${(props) => props.theme.requestTabPanel.ws.message.sent.bg};
+        margin-left:auto;
+    }
+    &.received{
+        max-width: 50ch;
+        background: ${(props) => props.theme.requestTabPanel.ws.message.received.bg};
+        margin-right:auto;
+    }
   }
-  .ws-message.sent {
-    background: var(--color-accent-bg);
-    border-left: 3px solid var(--color-accent);
-    color: var(--color-fg-primary);
-  }
-  .ws-message.received {
-    background: var(--color-success-bg);
-    border-left: 3px solid var(--color-success);
-    color: var(--color-fg-primary);
-  }
+  
   .ws-error {
     margin-top: 1rem;
     padding: 0.5rem 0.75rem;
