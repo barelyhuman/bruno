@@ -1109,7 +1109,7 @@ const registerNetworkIpc = (mainWindow) => {
         });
       });
       ws.on('error', (error) => {
-        event.sender.send('main:ws-error', { itemUid, error: error.message });
+        event.sender.send('main:ws-error', { itemUid, error: String(error) });
       });
       return { success: true };
     } catch (err) {

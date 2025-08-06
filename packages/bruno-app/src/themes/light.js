@@ -103,6 +103,11 @@ const lightTheme = {
       bg: '#f3f3f3',
       icon: '#515151'
     },
+    ws:{
+      connected: '#047857',
+      connectionFailed: 'rgb(185, 28, 28)',
+      connect: '515151'
+    },
     dragbar: {
       border: '#efefef',
       activeBorder: 'rgb(200, 200, 200)'

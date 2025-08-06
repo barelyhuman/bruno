@@ -16,7 +16,7 @@ import RunnerResults from 'components/RunnerResults';
 import VariablesEditor from 'components/VariablesEditor';
 import CollectionSettings from 'components/CollectionSettings';
 import { DocExplorer } from '@usebruno/graphql-docs';
-import WebSocketRequestPane from "components/RequestPane/WebSocketRequestPane" 
+import WebSocketRequestPane from "components/RequestPane/WebSocketRequestPane"
 import StyledWrapper from './StyledWrapper';
 import SecuritySettings from 'components/SecuritySettings';
 import FolderSettings from 'components/FolderSettings';
@@ -26,6 +26,7 @@ import CollectionOverview from 'components/CollectionSettings/Overview';
 import RequestNotLoaded from './RequestNotLoaded';
 import RequestIsLoading from './RequestIsLoading';
 import FolderNotFound from './FolderNotFound';
+import { connectWebSocket } from 'providers/ReduxStore/slices/websockets/actions';
 
 const MIN_LEFT_PANE_WIDTH = 300;
 const MIN_RIGHT_PANE_WIDTH = 350;
@@ -62,7 +63,6 @@ const RequestTabPanel = () => {
   });
 
   let collection = find(collections, (c) => c.uid === focusedTab?.collectionUid);
-
   const screenWidth = useSelector((state) => state.app.screenWidth);
   let asideWidth = useSelector((state) => state.app.leftSidebarWidth);
   const [leftPaneWidth, setLeftPaneWidth] = useState(
@@ -115,7 +115,7 @@ const RequestTabPanel = () => {
         if (newHeight < MIN_TOP_PANE_HEIGHT || newHeight > mainRect.height - MIN_BOTTOM_PANE_HEIGHT) {
           return;
         }
-        
+
         setTopPaneHeight(newHeight);
       } else {
         const newWidth = e.clientX - mainRect.left - dragOffset.current.x;
@@ -201,7 +201,7 @@ const RequestTabPanel = () => {
     if (!folder) {
       return <FolderNotFound folderUid={focusedTab.folderUid} />;
     }
-    
+
     return <FolderSettings collection={collection} folder={folder} />;
   }
 
@@ -223,6 +223,16 @@ const RequestTabPanel = () => {
   }
 
   const handleRun = async () => {
+    if (item.type === "ws-request") {
+      dispatch(connectWebSocket({ itemUid: item.uid, url: item.request.url }))
+        .then(() => toast.success("Websocket Connected"))
+        .catch((err) => {
+          toast.custom((t) => <NetworkError onClose={() => toast.dismiss(t.id)} />, {
+            duration: 5000
+          })
+        })
+      return
+    }
     dispatch(sendRequest(item, collection.uid)).catch((err) =>
       toast.custom((t) => <NetworkError onClose={() => toast.dismiss(t.id)} />, {
         duration: 5000
@@ -236,44 +246,50 @@ const RequestTabPanel = () => {
         <QueryUrl item={item} collection={collection} handleRun={handleRun} />
       </div>
       <section ref={mainSectionRef} className={`main flex ${isVerticalLayout ? 'flex-col' : ''} flex-grow pb-4 relative`}>
-        <section className="request-pane">
-          <div
-            className="px-4 h-full"
-            style={isVerticalLayout ? {
-              height: `${Math.max(topPaneHeight, MIN_TOP_PANE_HEIGHT)}px`,
-              minHeight: `${MIN_TOP_PANE_HEIGHT}px`,
-              width: '100%'
-            } : {
-              width: `${Math.max(leftPaneWidth, MIN_LEFT_PANE_WIDTH)}px`
-            }}
-          >
-            {item.type === 'graphql-request' ? (
-              <GraphQLRequestPane
-                item={item}
-                collection={collection}
-                onSchemaLoad={onSchemaLoad}
-                toggleDocs={toggleDocs}
-                handleGqlClickReference={handleGqlClickReference}
-              />
-            ) : null}
-
-            {item.type === 'http-request' ? (
-              <HttpRequestPane item={item} collection={collection} />
-            ) : null}
-
-            {item.type === 'ws-request' ? (
-              <WebSocketRequestPane itemUid={item.uid} request={item.request} collection={collection} />
-            ) : null}
+        {item.type === 'ws-request' ? (
+          <div className="px-4 w-full h-full">
+            <WebSocketRequestPane itemUid={item.uid} request={item.request} collection={collection} />
           </div>
-        </section>
+        ) : (<>
+          <section className={`request-pane`}>
+            <div
+              className="px-4 h-full"
+              style={isVerticalLayout ? {
+                height: `${Math.max(topPaneHeight, MIN_TOP_PANE_HEIGHT)}px`,
+                minHeight: `${MIN_TOP_PANE_HEIGHT}px`,
+                width: '100%'
+              } : {
+                width: `${Math.max(leftPaneWidth, MIN_LEFT_PANE_WIDTH)}px`
+              }}
+            >
+              {item.type === 'graphql-request' ? (
+                <GraphQLRequestPane
+                  item={item}
+                  collection={collection}
+                  onSchemaLoad={onSchemaLoad}
+                  toggleDocs={toggleDocs}
+                  handleGqlClickReference={handleGqlClickReference}
+                />
+              ) : null}
 
-        <div className="dragbar-wrapper" onMouseDown={handleDragbarMouseDown}>
-          <div className="dragbar-handle" />
-        </div>
+              {item.type === 'http-request' ? (
+                <HttpRequestPane item={item} collection={collection} />
+              ) : null}
+            </div>
+          </section>
 
-        <section className="response-pane flex-grow overflow-x-auto">
-          <ResponsePane item={item} collection={collection} response={item.response} />
-        </section>
+
+          <div className="dragbar-wrapper" onMouseDown={handleDragbarMouseDown}>
+            <div className="dragbar-handle" />
+          </div>
+
+
+
+          <section className="response-pane flex-grow overflow-x-auto">
+            <ResponsePane item={item} collection={collection} response={item.response} />
+          </section>
+
+        </>)}
       </section>
 
       {item.type === 'graphql-request' ? (
@@ -285,6 +301,7 @@ const RequestTabPanel = () => {
           </DocExplorer>
         </div>
       ) : null}
+
     </StyledWrapper>
   );
 };

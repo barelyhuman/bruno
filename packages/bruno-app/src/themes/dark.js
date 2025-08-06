@@ -103,6 +103,11 @@ const darkTheme = {
       bg: '#3D3D3D',
       icon: 'rgb(204, 204, 204)'
     },
+    ws:{
+      connected: '#8cd656',
+      connectionFailed: '#f06f57',
+      connect: 'rgb(204, 204, 204)'
+    },
     dragbar: {
       border: '#444',
       activeBorder: '#8a8a8a'

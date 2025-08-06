@@ -1,26 +1,19 @@
 import { clearWebSocketLog, connectWebSocket, disconnectWebSocket, sendWebSocketMessage } from 'providers/ReduxStore/slices/websockets/actions';
 import React, { useState } from 'react';
+import StyledWrapper from './WebSocketRequestPane/StyledWrapper';
 import { useDispatch, useSelector } from 'react-redux';
 
+
 // TODO:(reaper) redesign
-const WebSocketRequestPane = ({  itemUid, request }) => {
+const WebSocketRequestPane = ({ itemUid }) => {
   const dispatch = useDispatch();
-  const wsState = useSelector(state => state.websockets[itemUid] );
+  const wsState = useSelector(state => state.websockets[itemUid] ?? {});
   const [message, setMessage] = useState('');
-
-  const handleConnect = () => {
-    dispatch(connectWebSocket({itemUid,url:request.url}))
-  };
-
-  const handleDisconnect = () => {
-    dispatch(disconnectWebSocket({ itemUid:itemUid }))
-  };
 
   const handleSend = () => {
     const msg = message.trim()
-    if (!msg)return 
-
-    dispatch(sendWebSocketMessage({itemUid,message:msg}))
+    if (!msg) return
+    dispatch(sendWebSocketMessage({ itemUid, message: msg }))
     setMessage('');
   };
 
@@ -29,34 +22,51 @@ const WebSocketRequestPane = ({  itemUid, request }) => {
   };
 
   return (
-    <div >
-      <div >
-        <button onClick={handleConnect} disabled={wsState.connected}>Connect</button>
-        <button onClick={handleDisconnect} disabled={!wsState.connected}>Disconnect</button>
-        <button onClick={handleClear}>Clear Log</button>
+    <StyledWrapper className="w-full">
+      <div className="ws-controls">
+        <div className="flex w-full items-center gap-2">
+          <input
+            type="text"
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            placeholder="Type message..."
+            disabled={!wsState.connected}
+            className="ws-input flex-1"
+          />
+          <div className="flex flex-1">
+            <button
+              onClick={handleSend}
+              disabled={!wsState.connected || !message.trim()}
+              className="btn-add-param py-2 px-3 text-link select-none"
+            >
+              Send &rarr;
+            </button>
+          </div>
+        </div>
       </div>
-      <div >
-        <input
-          type="text"
-          value={message}
-          onChange={e => setMessage(e.target.value)}
-          placeholder="Type message..."
-          disabled={!wsState.connected}
-        />
-        <button onClick={handleSend} disabled={!wsState.connected || !message.trim()}>Send</button>
+      <div className="w-full flex items-center gap-10">
+        <div className="ws-label">Messages</div>
+        <button onClick={handleClear} className="btn-add-param py-2 px-3 text-link select-none">Clear Log</button>
       </div>
-      <div >
-        <h4>Messages</h4>
+      <div className="ws-messages">
         <ul>
           {(wsState.messages || []).map((msg, idx) => (
-            <li key={idx} className={msg.type === 'sent' ? 'sent' : 'received'}>
-              <span>[{msg.type}]</span> {msg.content}
+            <li
+              key={idx}
+              className={`ws-message ${msg.type}`}
+            >
+              <span className="font-mono text-xs text-fgMuted">[{msg.type}]</span>
+              <span>{msg.content}</span>
             </li>
           ))}
         </ul>
-        {wsState.error && <div>Error: {wsState.error}</div>}
+        {wsState.error && (
+          <div className="ws-error">
+            Error: {wsState.error}
+          </div>
+        )}
       </div>
-    </div>
+    </StyledWrapper>
   );
 };
 
