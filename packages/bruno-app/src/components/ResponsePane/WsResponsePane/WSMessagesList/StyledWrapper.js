@@ -27,6 +27,7 @@ const StyledWrapper = styled.div`
 
   .CodeMirror { 
     border-radius: 0.25rem;
+    color: ${({ theme }) => theme.text};
   }
 
   .CodeMirror-foldgutter, .CodeMirror-linenumbers, .CodeMirror-lint-markers {
@@ -35,7 +36,7 @@ const StyledWrapper = styled.div`
 
   div[role='tablist'] {
     .active {
-      color: ${(props) => props.theme.colors.text.yellow};
+      font-weight: 600;
     }
   }
 

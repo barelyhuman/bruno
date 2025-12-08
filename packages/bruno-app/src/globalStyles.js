@@ -54,14 +54,14 @@ const GlobalStyle = createGlobalStyle`
     border: solid 1px ${(props) => props.theme.button.close.border};
 
     &.btn-border {
-      border: solid 1px #696969;
+      border: solid 1px ${(props) => props.theme.button.secondary.hoverBorder};
     }
 
     &:hover,
     &:focus {
       outline: none;
       box-shadow: none;
-      border: solid 1px #696969;
+      border: solid 1px ${(props) => props.theme.button.secondary.hoverBorder};
     }
   }
 
@@ -83,7 +83,7 @@ const GlobalStyle = createGlobalStyle`
     border: solid 1px ${(props) => props.theme.button.secondary.border};
 
     .btn-icon {
-      color: #3f3f3f;
+      color: ${(props) => props.theme.colors.text.muted};
     }
 
     &:hover,
@@ -101,7 +101,7 @@ const GlobalStyle = createGlobalStyle`
     }
 
     &:disabled.btn-icon {
-      color: #545454;
+      color: ${(props) => props.theme.colors.text.muted};
     }
   }
 
@@ -172,6 +172,11 @@ const GlobalStyle = createGlobalStyle`
     }
   }
 
+  @keyframes slide {
+    0% {transform:translateX(-100%);}
+    100% {transform:translateX(100%);}
+  }
+
 
   // scrollbar styling
   // the below media query target non-macos devices
@@ -183,6 +188,7 @@ const GlobalStyle = createGlobalStyle`
     
     *::-webkit-scrollbar {
       width: 5px;
+      height: 5px;
     }
     
     *::-webkit-scrollbar-track {
@@ -236,6 +242,7 @@ const GlobalStyle = createGlobalStyle`
 
   // codemirror
   .CodeMirror {
+    color: ${(props) => props.theme.text};
     .cm-variable-valid {
       color: ${(props) => props.theme.codemirror.variable.valid};
     }
@@ -249,7 +256,8 @@ const GlobalStyle = createGlobalStyle`
   .CodeMirror-brunoVarInfo {
     color: ${(props) => props.theme.codemirror.variable.info.color};
     background: ${(props) => props.theme.codemirror.variable.info.bg};
-    border: 0.0625rem solid ${(props) => props.theme.codemirror.variable.info.border};
+    border: 0.0625rem solid ${(props) =>
+      props.theme.codemirror.variable.info.border};
     border-radius: 0.375rem;
     box-shadow: ${(props) => props.theme.codemirror.variable.info.boxShadow};
     box-sizing: border-box;
@@ -300,17 +308,18 @@ const GlobalStyle = createGlobalStyle`
   .CodeMirror-brunoVarInfo .var-scope-badge {
     display: inline-block;
     padding: 0.125rem 0.375rem;
-    background: #D977061A;
+    background: rgba(102,102,102,0.1);
     border-radius: 0.25rem;
     font-size: ${(props) => props.theme.font.size.sm};
-    color: #D97706;
+    color: #666666;
     letter-spacing: 0.03125rem;
   }
 
   /* Value Container */
   .CodeMirror-brunoVarInfo .var-value-container {
     position: relative;
-    border: 0.0625rem solid ${(props) => props.theme.codemirror.variable.info.editorBorder};
+    border: 0.0625rem solid ${(props) =>
+      props.theme.codemirror.variable.info.editorBorder};
     border-radius: 0.375rem;
     background: ${(props) => props.theme.codemirror.variable.info.editorBg};
     overflow-y: auto;
@@ -349,7 +358,8 @@ const GlobalStyle = createGlobalStyle`
     font-family: Inter, sans-serif;
     font-weight: 400;
     line-height: 1.25rem;
-    border: 0.0625rem solid ${(props) => props.theme.codemirror.variable.info.editorBorder};
+    border: 0.0625rem solid ${(props) =>
+      props.theme.codemirror.variable.info.editorBorder};
     border-radius: 0.375rem;
     background: ${(props) => props.theme.codemirror.variable.info.editorBg};
     color: ${(props) => props.theme.codemirror.variable.info.color};
@@ -365,7 +375,8 @@ const GlobalStyle = createGlobalStyle`
 
   .CodeMirror-brunoVarInfo .var-value-editor .CodeMirror-focused {
     background: ${(props) => props.theme.codemirror.variable.info.editorBg};
-    border-color: ${(props) => props.theme.codemirror.variable.info.editorFocusBorder};
+    border-color: ${(props) =>
+      props.theme.codemirror.variable.info.editorFocusBorder};
   }
 
   .CodeMirror-brunoVarInfo .var-value-editor .CodeMirror-lines {
@@ -459,7 +470,7 @@ const GlobalStyle = createGlobalStyle`
   }
 
   .CodeMirror-brunoVarInfo .copy-success {
-    color: #22c55e !important;
+    color: ${(props) => props.theme.colors.text.green} !important;
   }
 
   /* Read-only Note */
@@ -472,14 +483,14 @@ const GlobalStyle = createGlobalStyle`
 
   .CodeMirror-brunoVarInfo .var-warning-note {
     font-size: 0.75rem;
-    color: #ef4444;
+    color: ${(props) => props.theme.colors.text.danger};
     margin-top: 0.375rem;
     line-height: 1.25rem;
   }
 
   .CodeMirror-hint-active {
-    background: #08f !important;
-    color: #fff !important;
+    background: #666666 !important;
+    color: #ffffff !important;
   }
   
   .hovered-link.CodeMirror-link {
