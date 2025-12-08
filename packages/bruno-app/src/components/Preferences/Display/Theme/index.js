@@ -4,6 +4,29 @@ import * as Yup from 'yup';
 import StyledWrapper from './StyledWrapper';
 import { useTheme } from 'providers/Theme';
 
+const themes = [
+  {
+    key: 'dark',
+    label: 'Dark'
+  },
+  {
+    key: 'light',
+    label: 'Light'
+  },
+  {
+    key: 'system',
+    label: 'System'
+  },
+  {
+    key: 'reaper',
+    label: 'Reaper'
+  },
+  {
+    key: 'sequoia',
+    label: 'Sequoia'
+  }
+];
+
 const Theme = () => {
   const { storedTheme, setStoredTheme } = useTheme();
 
@@ -24,69 +47,27 @@ const Theme = () => {
     <StyledWrapper>
       <div className="bruno-form">
         <div className="flex items-center mt-2">
-          <input
-            id="light-theme"
-            className="cursor-pointer"
-            type="radio"
-            name="theme"
-            onChange={(e) => {
-              formik.handleChange(e);
-              formik.handleSubmit();
-            }}
-            value="light"
-            checked={formik.values.theme === 'light'}
-          />
-          <label htmlFor="light-theme" className="ml-1 cursor-pointer select-none">
-            Light
-          </label>
-
-          <input
-            id="dark-theme"
-            className="ml-4 cursor-pointer"
-            type="radio"
-            name="theme"
-            onChange={(e) => {
-              formik.handleChange(e);
-              formik.handleSubmit();
-            }}
-            value="dark"
-            checked={formik.values.theme === 'dark'}
-          />
-          <label htmlFor="dark-theme" className="ml-1 cursor-pointer select-none">
-            Dark
-          </label>
-
-          <input
-            id="dark-theme"
-            className="ml-4 cursor-pointer"
-            type="radio"
-            name="theme"
-            onChange={(e) => {
-              formik.handleChange(e);
-              formik.handleSubmit();
-            }}
-            value="reaper"
-            checked={formik.values.theme === 'reaper'}
-          />
-          <label htmlFor="reaper-theme" className="ml-1 cursor-pointer select-none">
-            Reaper
-          </label>
-
-          <input
-            id="system-theme"
-            className="ml-4 cursor-pointer"
-            type="radio"
-            name="theme"
-            onChange={(e) => {
-              formik.handleChange(e);
-              formik.handleSubmit();
-            }}
-            value="system"
-            checked={formik.values.theme === 'system'}
-          />
-          <label htmlFor="system-theme" className="ml-1 cursor-pointer select-none">
-            System
-          </label>
+          {themes.map((d, i) => {
+            return (
+              <>
+                <input
+                  id={`${d.key}-theme`}
+                  className={`cursor-pointer ${i === 0 ? 'ml-1' : ''}`}
+                  type="radio"
+                  name="theme"
+                  onChange={(e) => {
+                    formik.handleChange(e);
+                    formik.handleSubmit();
+                  }}
+                  value={d.key}
+                  checked={formik.values.theme === d.key}
+                />
+                <label htmlFor={`${d.key}-theme`} className="ml-1 mr-2 cursor-pointer select-none">
+                  {d.label}
+                </label>
+              </>
+            );
+          })}
         </div>
       </div>
     </StyledWrapper>

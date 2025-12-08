@@ -40,7 +40,8 @@ const registerPreferencesIpc = (mainWindow, watcher) => {
   });
 
   ipcMain.on('renderer:theme-change', (event, theme) => {
-    nativeTheme.themeSource = theme;
+    const isNative = ['dark', 'light', 'system'].includes(theme);
+    nativeTheme.themeSource = !isNative ? 'system' : theme;
   });
 };
 
