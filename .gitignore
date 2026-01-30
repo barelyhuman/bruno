@@ -12,6 +12,8 @@ bun.lock
 
 # testing
 coverage
+test-results.json
+*.backup
 
 # production
 build

@@ -1,0 +1,55 @@
+{
+  "summary": {
+    "totalRequests": 1,
+    "passedRequests": 0,
+    "failedRequests": 0,
+    "skippedRequests": 0,
+    "errorRequests": 1,
+    "totalAssertions": 0,
+    "passedAssertions": 0,
+    "failedAssertions": 0,
+    "totalTests": 0,
+    "passedTests": 0,
+    "failedTests": 0,
+    "totalPreRequestTests": 0,
+    "passedPreRequestTests": 0,
+    "failedPreRequestTests": 0,
+    "totalPostResponseTests": 0,
+    "passedPostResponseTests": 0,
+    "failedPostResponseTests": 0
+  },
+  "results": [
+    {
+      "test": {
+        "filename": "request.bru"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://echo.usebruno.com",
+        "headers": {
+          "content-type": "application/json"
+        },
+        "data": "{\n  \"ping\": \"pong\"\n}"
+      },
+      "response": {
+        "status": "error",
+        "statusText": null,
+        "headers": null,
+        "data": null,
+        "url": null,
+        "responseTime": 0
+      },
+      "error": "getaddrinfo ENOTFOUND echo.usebruno.com",
+      "status": "error",
+      "assertionResults": [],
+      "testResults": [],
+      "preRequestTestResults": [],
+      "postResponseTestResults": [],
+      "shouldStopRunnerExecution": false,
+      "runDuration": 0.047830852,
+      "suitename": "/home/runner/work/bruno/bruno/tests/runner/cli-json-env-file/collection/request",
+      "name": "cli-json-env-test",
+      "path": "request.bru"
+    }
+  ]
+}
