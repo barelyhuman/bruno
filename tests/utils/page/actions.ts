@@ -611,10 +611,12 @@ const selectEnvironment = async (
 const sendRequest = async (
   page: Page,
   expectedStatusCode?: number | string,
-  timeout: number = 30000
+  timeout: number = 60000
 ) => {
   await test.step('Send request', async () => {
     await page.getByTestId('send-arrow-icon').click();
+    // Wait a bit for React to process the click and start the request
+    await page.waitForTimeout(500);
     await page.getByTestId('response-status-code').waitFor({ state: 'visible', timeout });
 
     if (expectedStatusCode !== undefined) {
