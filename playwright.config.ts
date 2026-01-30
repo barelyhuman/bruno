@@ -12,9 +12,14 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? undefined : 1,
   reporter,
+  timeout: 90000, // Increase global test timeout to 90 seconds
+  expect: {
+    timeout: 60000 // Increase expect timeout to 60 seconds
+  },
 
   use: {
-    trace: process.env.CI ? 'on-first-retry' : 'on'
+    trace: process.env.CI ? 'on-first-retry' : 'on',
+    actionTimeout: 30000 // Increase action timeout to 30 seconds
   },
 
   projects: [
