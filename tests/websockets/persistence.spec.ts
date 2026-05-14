@@ -1,10 +1,11 @@
-import { expect, Locator, test } from '../../playwright';
+import { closeElectronApp, expect, Locator, test } from '../../playwright';
 import { buildWebsocketCommonLocators } from '../utils/page/locators';
-import { readFile, writeFile } from 'fs/promises';
+import { cp, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 
 const BRU_REQ_NAME = /^base$/;
-const BRU_PATH = join(__dirname, 'fixtures/collection/base.bru');
+const FIXTURES_COLLECTION_PATH = join(__dirname, 'fixtures/collection');
+const BASE_BRU_FILE_NAME = 'base.bru';
 
 // TODO: reaper move to someplace common
 const isRequestSaved = async (saveButton: Locator) => {
@@ -13,25 +14,42 @@ const isRequestSaved = async (saveButton: Locator) => {
 };
 
 test.describe.serial('persistence', () => {
-  let originalUrl = '';
-  let originalData = '';
+  test('save new websocket url', async ({ launchElectronApp, createTmpDir }) => {
+    const collectionPath = await createTmpDir('websockets-persistence-collection');
+    await cp(FIXTURES_COLLECTION_PATH, collectionPath, { recursive: true });
 
-  test.beforeAll(async () => {
-    originalData = await readFile(BRU_PATH, 'utf8');
+    const baseBruPath = join(collectionPath, BASE_BRU_FILE_NAME);
+    const originalData = await readFile(baseBruPath, 'utf8');
     const originalUrlMatch = originalData.match(`(url)\s*\:\s*(.+)`);
     if (!originalUrlMatch) {
       throw new Error('url not found in bru file for websocket');
     }
-    // Trim to remove leading/trailing whitespace from the regex capture
-    originalUrl = originalUrlMatch[0].replace(/url\:/, '').trim();
-  });
+    const originalUrl = originalUrlMatch[0].replace(/url\:/, '').trim();
 
-  test.afterAll(async () => {
-    // Restore original fixture since pageWithUserData does not isolate collection files
-    await writeFile(BRU_PATH, originalData, 'utf8');
-  });
+    const userDataPath = await createTmpDir('websockets-persistence-user-data');
+    await writeFile(
+      join(userDataPath, 'preferences.json'),
+      JSON.stringify(
+        {
+          maximized: false,
+          lastOpenedCollections: [collectionPath],
+          preferences: {
+            onboarding: {
+              hasLaunchedBefore: true,
+              hasSeenWelcomeModal: true
+            }
+          }
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
 
-  test('save new websocket url', async ({ pageWithUserData: page }) => {
+    const app = await launchElectronApp({ userDataPath });
+    const page = await app.firstWindow();
+    await page.locator('[data-app-state="loaded"]').waitFor({ timeout: 30000 });
+
     const replacementUrl = 'ws://localhost:8083';
     const locators = buildWebsocketCommonLocators(page);
     const selectAllShortcut = process.platform === 'darwin' ? 'Meta+a' : 'Control+a';
@@ -54,5 +72,7 @@ test.describe.serial('persistence', () => {
 
     // check if the replacementUrl is now visually available
     await expect(page.locator('.input-container').filter({ hasText: replacementUrl }).first()).toBeAttached();
+
+    await closeElectronApp(app);
   });
 });
