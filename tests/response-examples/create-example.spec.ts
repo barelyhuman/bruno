@@ -1,14 +1,7 @@
-import { execSync } from 'child_process';
 import { test, expect } from '../../playwright';
-import path from 'path';
-import { clickResponseAction } from '../utils/page/actions';
+import { clickResponseAction, sendRequest } from '../utils/page/actions';
 
 test.describe.serial('Create and Delete Response Examples', () => {
-  test.afterAll(async () => {
-    // Reset the collection request file to the original state
-    execSync(`git checkout -- ${path.join(__dirname, 'fixtures', 'collection', 'create-example.bru')}`);
-  });
-
   test('should create a response example from response bookmark', async ({ pageWithUserData: page }) => {
     await test.step('Open collection and request', async () => {
       await page.locator('#sidebar-collection-name').filter({ hasText: 'collection' }).click();
@@ -62,8 +55,9 @@ test.describe.serial('Create and Delete Response Examples', () => {
 
   test('should close modal when cancelled', async ({ pageWithUserData: page }) => {
     await test.step('Test modal cancellation', async () => {
+      await page.locator('#sidebar-collection-name').getByText('collection').click();
       await page.locator('.collection-item-name').getByText('create-example').click();
-      await page.getByTestId('send-arrow-icon').click();
+      await sendRequest(page);
       await clickResponseAction(page, 'response-bookmark-btn');
       await page.getByRole('button', { name: 'Cancel' }).click();
       await expect(page.getByText('Save Response as Example')).not.toBeVisible();
@@ -94,6 +88,8 @@ test.describe.serial('Create and Delete Response Examples', () => {
   });
 
   test('should show created example in sidebar after expanding request', async ({ pageWithUserData: page }) => {
+    const exampleName = `Sidebar Test Example ${Date.now()}`;
+
     await test.step('Open collection and request', async () => {
       await page.locator('#sidebar-collection-name').getByText('collection').click();
       await page.locator('.collection-item-name').getByText('create-example').click();
@@ -104,7 +100,7 @@ test.describe.serial('Create and Delete Response Examples', () => {
       await clickResponseAction(page, 'response-bookmark-btn');
 
       await page.getByTestId('create-example-name-input').clear();
-      await page.getByTestId('create-example-name-input').fill('Sidebar Test Example');
+      await page.getByTestId('create-example-name-input').fill(exampleName);
       await page.getByTestId('create-example-description-input').fill('This example should appear in the sidebar');
       await page.getByRole('button', { name: 'Create Example' }).click();
       // Wait for modal to close
@@ -113,7 +109,7 @@ test.describe.serial('Create and Delete Response Examples', () => {
 
     await test.step('Verify example appears in sidebar', async () => {
       await page.locator('.collection-item-name', { hasText: 'create-example' }).getByTestId('request-item-chevron').click();
-      const exampleItem = page.locator('.collection-item-name').getByText('Sidebar Test Example', { exact: true });
+      const exampleItem = page.locator('.collection-item-name').getByText(exampleName, { exact: true }).first();
       await expect(exampleItem).toBeVisible();
     });
   });
