@@ -3,7 +3,7 @@ import get from 'lodash/get';
 import { useSelector } from 'react-redux';
 import { useTheme } from 'providers/Theme';
 import CodeEditor from 'components/CodeEditor';
-import { getCodeMirrorModeBasedOnContentType } from 'utils/common/codemirror';
+import { getCodeMirrorModeBasedOnContentType } from 'utils/codemirror6/languages';
 import StyledWrapper from 'components/ResponseExample/ResponseExampleResponsePane/ResponseExampleResponseContent/StyledWrapper';
 
 const MockResponseTryResult = ({ collection, item, tryResult }) => {

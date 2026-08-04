@@ -1,4 +1,4 @@
-import { extendUrlWithBalancedParentheses } from 'utils/codemirror/linkAware';
+import { extendUrlWithBalancedParentheses } from 'utils/codemirror6/urlUtils';
 
 export function extendMatch(match, text) {
   const extended = extendUrlWithBalancedParentheses(match.raw, text, match.lastIndex);
