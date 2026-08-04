@@ -1,5 +1,5 @@
 import { EditorView } from '@codemirror/view';
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { HighlightStyle, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 
 /**
@@ -87,11 +87,16 @@ export function brunoThemeExtension(cmTheme, { isDark = false, font, fontSize } 
     { tag: tags.variableName, color: tokens.variable },
     { tag: tags.keyword, color: tokens.keyword },
     { tag: tags.comment, color: tokens.comment },
+    { tag: tags.lineComment, color: tokens.comment },
     { tag: tags.operator, color: tokens.operator },
     { tag: tags.tagName, color: tokens.tag },
     { tag: tags.angleBracket, color: tokens.tagBracket },
     { tag: tags.meta, color: tokens.keyword }
   ]);
 
-  return [editorTheme, syntaxHighlighting(highlightStyle)];
+  return [
+    editorTheme,
+    syntaxHighlighting(highlightStyle),
+    syntaxHighlighting(defaultHighlightStyle, { fallback: true })
+  ];
 }

@@ -17,9 +17,17 @@ import { swift } from '@codemirror/legacy-modes/mode/swift';
 import { protobuf } from '@codemirror/legacy-modes/mode/protobuf';
 import { sparql } from '@codemirror/legacy-modes/mode/sparql';
 
-const YAML_MODES = new Set(['yaml', 'text/x-yaml', 'text/yaml', 'application/x-yaml']);
+const YAML_MODES = new Set(['yaml', 'text/x-yaml', 'text/yaml', 'application/x-yaml', 'application/yaml']);
 const JSON_MODES = new Set(['application/json', 'application/ld+json', 'json']);
 const JS_MODES = new Set(['javascript', 'text/javascript', 'application/javascript']);
+
+export function isYamlMode(mode) {
+  return Boolean(mode && YAML_MODES.has(mode));
+}
+
+export function isJsonMode(mode) {
+  return Boolean(mode && JSON_MODES.has(mode));
+}
 
 /**
  * Map Bruno CM5 mode strings to CM6 LanguageSupport extensions.

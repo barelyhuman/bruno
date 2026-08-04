@@ -8,7 +8,7 @@ import {
 } from '@codemirror/language';
 import { lintGutter } from '@codemirror/lint';
 import { search, searchKeymap, openSearchPanel } from '@codemirror/search';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Prec } from '@codemirror/state';
 import { compatExtension } from '../compat';
 
 /**
@@ -26,7 +26,12 @@ export function compatChangeListener() {
 /**
  * Standard Bruno editor extensions shared across presets.
  */
-export function baseSetup({ lineNumbers: showLineNumbers = true, lintGutter: showLintGutter = false, enableSearch = false } = {}) {
+export function baseSetup({
+  lineNumbers: showLineNumbers = true,
+  lintGutter: showLintGutter = false,
+  enableSearch = false,
+  tabSize
+} = {}) {
   const extensions = [
     ...compatExtension(),
     compatChangeListener(),
@@ -56,6 +61,10 @@ export function baseSetup({ lineNumbers: showLineNumbers = true, lintGutter: sho
     extensions.push(lintGutter());
   }
 
+  if (tabSize !== null) {
+    extensions.push(EditorState.tabSize.of(tabSize));
+  }
+
   return extensions;
 }
 
@@ -64,7 +73,7 @@ export function lineWrappingExtension() {
 }
 
 export function tabKeymapExtension() {
-  return keymap.of([
+  return Prec.highest(keymap.of([
     {
       key: 'Tab',
       run: (view) => {
@@ -95,7 +104,7 @@ export function tabKeymapExtension() {
         return false;
       }
     }
-  ]);
+  ]));
 }
 
 export function searchKeymapExtension() {

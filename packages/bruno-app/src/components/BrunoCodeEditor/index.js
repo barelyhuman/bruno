@@ -4,7 +4,7 @@ import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { attachE2eShim, detachE2eShim } from 'utils/codemirror6/e2eShim';
 import { createCm5Compat } from 'utils/codemirror6/compat';
-import { useBrunoExtensions } from './useBrunoExtensions';
+import { useBrunoExtensions, NO_EXTRA_EXTENSIONS } from './useBrunoExtensions';
 import { PRESETS } from './presets';
 
 const SERVER_RENDERED = typeof window === 'undefined' || global['PREVENT_CODEMIRROR_RENDER'] === true;
@@ -25,7 +25,7 @@ const BrunoCodeEditor = React.forwardRef(function BrunoCodeEditor(
     enableLint = true,
     className = '',
     style,
-    extraExtensions = []
+    extraExtensions = NO_EXTRA_EXTENSIONS
   },
   ref
 ) {

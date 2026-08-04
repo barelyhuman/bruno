@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
-import { getLanguageSupport } from 'utils/codemirror6/languages';
+import { getLanguageSupport, isJsonMode, isYamlMode } from 'utils/codemirror6/languages';
 import { brunoThemeExtension } from 'utils/codemirror6/theme';
+import { apispecThemeExtension } from 'utils/codemirror6/theme/apispec';
 import { brunoJavaScriptLinter } from 'utils/codemirror6/extensions/brunoLint';
 import { brunoJsonLinter } from 'utils/codemirror6/extensions/jsonLint';
+import { brunoYamlLinter } from 'utils/codemirror6/extensions/yamlLint';
 import {
   baseSetup,
   lineWrappingExtension,
@@ -14,7 +16,7 @@ import {
 import { PRESETS } from './presets';
 
 const LINT_OPTIONS = { esversion: 11, expr: true, asi: true };
-const JSON_MODES = new Set(['application/json', 'application/ld+json', 'json']);
+export const NO_EXTRA_EXTENSIONS = [];
 
 /**
  * Compose CM6 extensions for a Bruno editor preset.
@@ -28,24 +30,39 @@ export function useBrunoExtensions({
   font,
   fontSize,
   enableLint = true,
-  extraExtensions = []
+  extraExtensions = NO_EXTRA_EXTENSIONS
 }) {
+  const cmTheme = styledTheme?.codemirror;
+  const themeStatus = styledTheme?.status;
+  const themeColors = styledTheme?.colors;
+
   return useMemo(() => {
     const isDark = theme === 'dark';
-    const cmTheme = styledTheme?.codemirror;
     const isInline = preset === PRESETS.INLINE_SINGLE || preset === PRESETS.INLINE_MULTI;
     const hasNativeSearch = preset === PRESETS.APISPEC || preset === PRESETS.GRAPHQL;
+    const languageMode = preset === PRESETS.APISPEC ? 'yaml' : mode;
+
+    const themeExtension = preset === PRESETS.APISPEC
+      ? apispecThemeExtension(cmTheme, {
+          isDark,
+          font,
+          fontSize,
+          status: themeStatus,
+          colors: themeColors
+        })
+      : brunoThemeExtension(cmTheme, { isDark, font, fontSize });
 
     const extensions = [
       ...baseSetup({
         lineNumbers: !isInline,
         lintGutter: preset === PRESETS.APISPEC || preset === PRESETS.FILE || preset === PRESETS.FULL,
-        enableSearch: hasNativeSearch
+        enableSearch: hasNativeSearch,
+        tabSize: isInline ? undefined : 2
       }),
       lineWrappingExtension(),
       tabKeymapExtension(),
-      ...getLanguageSupport(mode),
-      ...brunoThemeExtension(cmTheme, { isDark, font, fontSize }),
+      ...getLanguageSupport(languageMode),
+      ...themeExtension,
       ...readOnlyExtension(readOnly),
       mousetrapExtension(),
       ...extraExtensions
@@ -57,7 +74,9 @@ export function useBrunoExtensions({
 
     if (enableLint) {
       if (preset === PRESETS.APISPEC || preset === PRESETS.FILE || preset === PRESETS.FULL) {
-        if (JSON_MODES.has(mode)) {
+        if (isYamlMode(languageMode)) {
+          extensions.push(brunoYamlLinter());
+        } else if (isJsonMode(languageMode)) {
           extensions.push(brunoJsonLinter());
         } else {
           extensions.push(brunoJavaScriptLinter(LINT_OPTIONS));
@@ -66,5 +85,5 @@ export function useBrunoExtensions({
     }
 
     return extensions;
-  }, [preset, mode, theme, styledTheme, readOnly, font, fontSize, enableLint, extraExtensions]);
+  }, [preset, mode, theme, cmTheme, themeStatus, themeColors, readOnly, font, fontSize, enableLint, extraExtensions]);
 }

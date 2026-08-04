@@ -1,3 +1,6 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import { defineConfig } from '@rsbuild/core';
 import { pluginReact } from '@rsbuild/plugin-react';
 import { pluginBabel } from '@rsbuild/plugin-babel';
@@ -5,6 +8,20 @@ import { pluginStyledComponents } from '@rsbuild/plugin-styled-components';
 import { pluginSass } from '@rsbuild/plugin-sass';
 import { pluginNodePolyfill } from '@rsbuild/plugin-node-polyfill';
 import { pluginRemoteImages } from './plugins/remote-images/index.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+
+/**
+ * Force a single physical copy of CM6 core packages.
+ * Duplicate @codemirror/language (e.g. root 6.0.0 vs app 6.12.4) breaks
+ * syntax highlighting because LanguageSupport and syntaxHighlighting register
+ * on different Facet instances.
+ */
+function resolveCm6(pkg) {
+  // require.resolve returns .../dist/index.cjs — alias to the package root
+  return path.resolve(path.dirname(require.resolve(pkg)), '..');
+}
 
 const remoteImageDomains = (process.env.BRUNO_REMOTE_IMAGE_DOMAINS || 'd3icksk7srk4uh.cloudfront.net')
   .split(',')
@@ -34,7 +51,15 @@ export default defineConfig({
       '**/test-utils/**',
       '**/*.test.*',
       '**/*.spec.*'
-    ]
+    ],
+    alias: {
+      '@codemirror/language': resolveCm6('@codemirror/language'),
+      '@codemirror/state': resolveCm6('@codemirror/state'),
+      '@codemirror/view': resolveCm6('@codemirror/view'),
+      '@codemirror/autocomplete': resolveCm6('@codemirror/autocomplete'),
+      '@lezer/common': resolveCm6('@lezer/common'),
+      '@lezer/highlight': resolveCm6('@lezer/highlight')
+    }
   },
   html: {
     title: 'Bruno'
@@ -72,6 +97,13 @@ export default defineConfig({
               name: 'lib-codemirror',
               chunks: 'all',
               priority: 10
+            },
+            // CM6 packages (@codemirror/*, @lezer/*) — keep separate from CM5
+            codemirror6: {
+              test: /[\\/]node_modules[\\/](@codemirror|@lezer)[\\/]/,
+              name: 'lib-codemirror6',
+              chunks: 'all',
+              priority: 11
             }
           }
         }
@@ -79,4 +111,3 @@ export default defineConfig({
     },
   }
 });
-``
