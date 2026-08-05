@@ -2,19 +2,10 @@ import { useEffect, useRef } from 'react';
 import find from 'lodash/find';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearFocusErrorLine } from 'providers/ReduxStore/slices/tabs';
-import { focusErrorLine } from 'utils/codemirror/focusErrorLine';
+import { focusErrorLine } from 'utils/codemirror6/extensions/focusErrorLine';
 
 /**
  * Subscribes a CodeMirror-hosting component to the tab's `focusErrorLine` signal.
- * When the signal targets this host's `scriptPhase`, scrolls the editor to the
- * line and flashes a red highlight that fades over ~3s. Re-firing for the same
- * line is handled via the `requestedAt` token.
- *
- * @param {object} params
- * @param {string} params.uid                        Tab uid (request/folder/collection uid)
- * @param {React.RefObject} params.editorRef         Ref to a CodeEditor component (exposes `.editor`)
- * @param {string} params.scriptPhase               'pre-request' | 'post-response' | 'test'
- * @param {boolean} [params.isVisible=true]          Whether this editor's tab is currently shown
  */
 export const useFocusErrorLine = ({ uid, editorRef, scriptPhase, isVisible = true }) => {
   const dispatch = useDispatch();
@@ -27,24 +18,23 @@ export const useFocusErrorLine = ({ uid, editorRef, scriptPhase, isVisible = tru
 
   useEffect(() => {
     if (!focusErrorLineState || !isVisible) return;
-
     if (focusErrorLineState.scriptPhase !== scriptPhase) return;
 
     const timer = setTimeout(() => {
-      const editor = editorRef.current?.editor;
-      if (!editor) return;
+      const compat = editorRef.current?.editor;
+      if (!compat) return;
 
       if (disposeRef.current) {
         disposeRef.current();
         disposeRef.current = null;
       }
 
-      disposeRef.current = focusErrorLine(editor, focusErrorLineState.line);
+      disposeRef.current = focusErrorLine(compat, focusErrorLineState.line);
       dispatch(clearFocusErrorLine({ uid }));
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [focusErrorLineState?.requestedAt, focusErrorLineState?.line, focusErrorLineState?.scriptPhase, isVisible, scriptPhase, uid]);
+  }, [focusErrorLineState?.requestedAt, focusErrorLineState?.line, focusErrorLineState?.scriptPhase, isVisible, scriptPhase, uid, dispatch, editorRef]);
 
   useEffect(() => {
     return () => {
