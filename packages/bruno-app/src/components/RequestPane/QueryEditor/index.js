@@ -1,303 +1,161 @@
 /**
- *  Copyright (c) 2021 GraphQL Contributors.
- *
- *  This source code is licensed under the MIT license found in the
- *  LICENSE file in the root directory of this source tree.
+ * GraphQL query editor — migrated to CodeMirror 6 with cm6-graphql.
  */
 
-import React from 'react';
-import isEqual from 'lodash/isEqual';
-import MD from 'markdown-it';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { useTheme } from 'styled-components';
 import { format } from 'prettier/standalone';
 import prettierPluginGraphql from 'prettier/parser-graphql';
-import { getAllVariables } from 'utils/collections';
+import { keymap } from '@codemirror/view';
+import { graphql, lint as graphqlLint, completion as graphqlCompletion, jump as graphqlJump, updateSchema } from 'cm6-graphql';
 import { PLACEHOLDER } from 'utils/graphql/queryBuilder';
 import toast from 'react-hot-toast';
+import { PRESETS } from 'components/BrunoCodeEditor/presets';
+import { useBrunoExtensions } from 'components/BrunoCodeEditor/useBrunoExtensions';
+import { useBrunoCodeMirror } from 'components/BrunoCodeEditor/useBrunoCodeMirror';
+import { setupLinkAware6 } from 'utils/codemirror6/extensions/linkAware';
+import { setupCodeMirrorResizeRefresh } from 'utils/codemirror6/extensions/resizeRefresh';
+import { createCm5Compat } from 'utils/codemirror6/compat';
 import StyledWrapper from './StyledWrapper';
-import onHasCompletion from './onHasCompletion';
-import { setupLinkAware } from 'utils/codemirror/linkAware';
-import { setupCodeMirrorResizeRefresh } from 'utils/codemirror/resize';
 
-const CodeMirror = require('codemirror');
-
-const md = new MD();
 const AUTO_COMPLETE_AFTER_KEY = /^[a-zA-Z0-9_@(]$/;
 
-const createSafeGraphQLLinter = () => {
-  // Get the original GraphQL lint helper registered by codemirror-graphql
-  const originalLinter = CodeMirror.helpers?.lint?.graphql?.[0];
+const QueryEditor = forwardRef(function QueryEditor(
+  {
+    value = '',
+    theme,
+    readOnly = false,
+    onEdit,
+    schema,
+    validationRules,
+    externalFragments,
+    onClickReference,
+    onCopyQuery,
+    onPrettifyQuery,
+    onMergeQuery,
+    font,
+    fontSize
+  },
+  ref
+) {
+  const styledTheme = useTheme();
+  const cleanupRef = useRef({});
+  const compatRef = useRef(null);
+  const wrapperRef = useRef(null);
 
-  return (text, options) => {
+  const graphqlExtensions = useMemo(() => {
+    const opts = {
+      schema,
+      validationRules: validationRules ?? null,
+      externalFragments: externalFragments ?? null
+    };
+    return [
+      ...graphql(opts),
+      graphqlLint,
+      graphqlCompletion,
+      graphqlJump({
+        schema,
+        onClick: (reference) => onClickReference?.(reference)
+      }),
+      keymap.of([
+        { key: 'Shift-Mod-c', run: () => {
+          onCopyQuery?.(); return true;
+        } },
+        { key: 'Shift-Mod-p', run: () => {
+          onPrettifyQuery?.(); return true;
+        } },
+        { key: 'Shift-Mod-f', run: () => {
+          onPrettifyQuery?.(); return true;
+        } },
+        { key: 'Shift-Mod-m', run: () => {
+          onMergeQuery?.(); return true;
+        } },
+        { key: 'Mod-Enter', run: () => true }
+      ])
+    ];
+  }, [schema, validationRules, externalFragments, onClickReference, onCopyQuery, onPrettifyQuery, onMergeQuery]);
+
+  const extensions = useBrunoExtensions({
+    preset: PRESETS.GRAPHQL,
+    mode: 'graphql',
+    theme,
+    styledTheme,
+    readOnly: readOnly ? 'nocursor' : false,
+    font,
+    fontSize,
+    enableLint: true,
+    extraExtensions: graphqlExtensions
+  });
+
+  const beautifyRequestBody = useCallback(() => {
+    const compat = compatRef.current;
+    if (!compat) return;
     try {
-      if (originalLinter) {
-        return originalLinter(text, options);
-      }
-      return [];
-    } catch (error) {
-      // Log the error but don't crash - return empty lint results
-      // This can happen if the schema has validation issues
-      console.warn('GraphQL lint error (schema may be invalid):', error.message);
-      return [];
-    }
-  };
-};
-
-export default class QueryEditor extends React.Component {
-  constructor(props) {
-    super(props);
-
-    // Keep a cached version of the value, this cache will be updated when the
-    // editor is updated, which can later be used to protect the editor from
-    // unnecessary updates during the update lifecycle.
-    this.cachedValue = props.value || '';
-    this.variables = {};
-  }
-
-  componentDidMount() {
-    /**
-     * No-op. We claim Cmd-Enter / Ctrl-Enter here only to suppress CodeMirror's
-     * sublime keymap default (insertLineAfter), which would otherwise insert a
-     * newline. sendRequest dispatch is owned by Mousetrap — the editor input has
-     * the `mousetrap` class (added below) so the global
-     * useKeybinding('sendRequest', …) in RequestTabPanel handles it, and only
-     * in request tabs.
-     */
-    const runShortcut = () => {};
-
-    const editor = (this.editor = CodeMirror(this._node, {
-      value: this.props.value || '',
-      lineNumbers: true,
-      tabSize: 2,
-      mode: 'graphql',
-      // mode: 'brunovariables',
-      brunoVarInfo: {
-        variables: getAllVariables(this.props.collection)
-      },
-      theme: this.props.editorTheme || 'graphiql',
-      theme: this.props.theme === 'dark' ? 'monokai' : 'default',
-      keyMap: 'sublime',
-      autoCloseBrackets: true,
-      matchBrackets: true,
-      showCursorWhenSelecting: true,
-      scrollbarStyle: 'overlay',
-      readOnly: this.props.readOnly ? 'nocursor' : false,
-      foldGutter: {
-        minFoldSize: 4
-      },
-      lint: {
-        getAnnotations: createSafeGraphQLLinter(),
-        schema: this.props.schema,
-        validationRules: this.props.validationRules ?? null,
-        // linting accepts string or FragmentDefinitionNode[]
-        externalFragments: this.props?.externalFragments
-      },
-      hintOptions: {
-        schema: this.props.schema,
-        closeOnUnfocus: false,
-        completeSingle: false,
-        container: this._node,
-        externalFragments: this.props?.externalFragments
-      },
-      info: {
-        schema: this.props.schema,
-        renderDescription: (text) => md.render(text),
-        onClick: (reference) => this.props.onClickReference && this.props.onClickReference(reference)
-      },
-      jump: {
-        schema: this.props.schema,
-        onClick: (reference) => this.props.onClickReference && this.props.onClickReference(reference)
-      },
-      gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
-      extraKeys: {
-        'Cmd-Space': () => editor.showHint({ completeSingle: true, container: this._node }),
-        'Ctrl-Space': () => editor.showHint({ completeSingle: true, container: this._node }),
-        'Alt-Space': () => editor.showHint({ completeSingle: true, container: this._node }),
-        'Shift-Space': () => editor.showHint({ completeSingle: true, container: this._node }),
-        'Shift-Alt-Space': () => editor.showHint({ completeSingle: true, container: this._node }),
-        'Shift-Ctrl-C': () => {
-          if (this.props.onCopyQuery) {
-            this.props.onCopyQuery();
-          }
-        },
-        'Shift-Ctrl-P': () => {
-          if (this.props.onPrettifyQuery) {
-            this.props.onPrettifyQuery();
-          }
-        },
-        /* Shift-Ctrl-P is hard coded in Firefox for private browsing so adding an alternative to Prettify */
-        'Shift-Ctrl-F': () => {
-          if (this.props.onPrettifyQuery) {
-            this.props.onPrettifyQuery();
-          }
-        },
-        'Shift-Ctrl-M': () => {
-          if (this.props.onMergeQuery) {
-            this.props.onMergeQuery();
-          }
-        },
-        'Cmd-F': 'findPersistent',
-        'Ctrl-F': 'findPersistent',
-        'Cmd-Enter': runShortcut,
-        'Ctrl-Enter': runShortcut
-      }
-    }));
-    if (editor) {
-      editor.on('change', this._onEdit);
-      editor.on('keyup', this._onKeyUp);
-      editor.on('hasCompletion', this._onHasCompletion);
-      editor.on('beforeChange', this._onBeforeChange);
-    }
-    this.addOverlay();
-
-    setupLinkAware(editor);
-    this.cleanupResizeRefresh = setupCodeMirrorResizeRefresh(editor, this._node);
-
-    // Add mousetrap class so Mousetrap captures shortcuts even when CodeMirror is focused
-    const cmInput = editor.getInputField();
-    if (cmInput) {
-      cmInput.classList.add('mousetrap');
-    }
-  }
-
-  componentDidUpdate(prevProps) {
-    // Ensure the changes caused by this update are not interpreted as
-    // user-input changes which could otherwise result in an infinite
-    // event loop.
-    this.ignoreChangeEvent = true;
-    if (this.props.schema !== prevProps.schema && this.editor) {
-      this.editor.options.lint.schema = this.props.schema;
-      this.editor.options.hintOptions.schema = this.props.schema;
-      this.editor.options.info.schema = this.props.schema;
-      this.editor.options.jump.schema = this.props.schema;
-      CodeMirror.signal(this.editor, 'change', this.editor);
-    }
-    if (this.props.value !== prevProps.value && this.props.value !== this.cachedValue && this.editor) {
-      const cursor = this.editor.getCursor();
-      this.cachedValue = String(this.props.value);
-      this.editor.setValue(String(this.props.value) || '');
-      this.editor.setCursor(cursor);
-    }
-
-    if (this.props.theme !== prevProps.theme && this.editor) {
-      this.editor.setOption('theme', this.props.theme === 'dark' ? 'monokai' : 'default');
-    }
-    let variables = getAllVariables(this.props.collection);
-    if (!isEqual(variables, this.variables)) {
-      this.editor.options.brunoVarInfo.variables = variables;
-      this.addOverlay();
-    }
-    this.ignoreChangeEvent = false;
-  }
-
-  componentWillUnmount() {
-    if (this.editor) {
-      if (this.editor?._destroyLinkAware) {
-        this.editor._destroyLinkAware();
-      }
-      this.cleanupResizeRefresh?.();
-      this.editor.off('change', this._onEdit);
-      this.editor.off('keyup', this._onKeyUp);
-      this.editor.off('hasCompletion', this._onHasCompletion);
-      this.editor.off('beforeChange', this._onBeforeChange);
-      // Remove the CodeMirror DOM element so React 18 Strict Mode's
-      // unmount-remount cycle doesn't leave an orphaned instance behind.
-      const wrapper = this.editor.getWrapperElement();
-      if (wrapper && wrapper.parentNode) {
-        wrapper.parentNode.removeChild(wrapper);
-      }
-      this.editor = null;
-    }
-  }
-
-  beautifyRequestBody = () => {
-    try {
-      if (!this.editor) return;
-      const currentValue = this.editor.getValue();
-      if (!currentValue || !currentValue.trim()) return;
-
-      // Temporarily fill empty selection sets so prettier can parse the query
-      // First preserve empty input objects (e.g. input: {}), then fill empty selection sets
+      const currentValue = compat.getValue();
+      if (!currentValue?.trim()) return;
       let sanitized = currentValue.replace(/(:\s*)\{\s*\}/g, '$1{ __empty: true }');
       sanitized = sanitized.replace(/\{\s*\}/g, `{ ${PLACEHOLDER} }`);
-      let prettyQuery = format(sanitized, {
-        parser: 'graphql',
-        plugins: [prettierPluginGraphql]
-      });
+      let prettyQuery = format(sanitized, { parser: 'graphql', plugins: [prettierPluginGraphql] });
       prettyQuery = prettyQuery.replace(new RegExp(`^\\s*${PLACEHOLDER}\\n`, 'gm'), '');
       prettyQuery = prettyQuery.replace(/\{\s*__empty:\s*true\s*\}/g, '{}');
-
-      this.editor.setValue(prettyQuery);
+      compat.setValue(prettyQuery);
       toast.success('Query prettified');
-    } catch (e) {
+    } catch {
       toast.error('Error occurred while prettifying GraphQL query');
     }
-  };
+  }, []);
 
-  // Todo: Overlay is messing up with schema hint
-  // Fix this
-  addOverlay = () => {
-    // let variables = getAllVariables(this.props.collection);
-    // this.variables = variables;
-    // defineCodeMirrorBrunoVariablesMode(variables, 'graphql');
-    // this.editor.setOption('mode', 'brunovariables');
-  };
+  useImperativeHandle(ref, () => ({ beautifyRequestBody }), [beautifyRequestBody]);
 
-  render() {
-    return (
-      <StyledWrapper
-        className="h-full w-full flex flex-col relative graphiql-container"
-        aria-label="Query Editor"
-        font={this.props.font}
-        fontSize={this.props.fontSize}
-        ref={(node) => {
-          this._node = node;
-        }}
-      />
-    );
-  }
+  const handleChange = useCallback((newValue) => {
+    onEdit?.(newValue);
+  }, [onEdit]);
 
-  _onKeyUp = (_cm, e) => {
-    if (e.metaKey || e.ctrlKey || e.altKey) {
-      return;
-    }
-    if (AUTO_COMPLETE_AFTER_KEY.test(e.key) && this.editor) {
-      this.editor.execCommand('autocomplete');
-    }
-  };
+  const { viewRef, setContainer } = useBrunoCodeMirror({
+    value,
+    extensions,
+    onChange: handleChange,
+    onCreateEditor: (view) => {
+      compatRef.current = createCm5Compat(view);
+      cleanupRef.current.linkAware = setupLinkAware6(view);
+      cleanupRef.current.resize = setupCodeMirrorResizeRefresh(view, wrapperRef.current);
+      const keyupHandler = (compat, e) => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        if (AUTO_COMPLETE_AFTER_KEY.test(e.key)) {
+          compat.execCommand('autocomplete');
+        }
+      };
+      compatRef.current.on('keyup', keyupHandler);
+      cleanupRef.current.keyup = () => compatRef.current?.off('keyup', keyupHandler);
+    },
+    readOnly: readOnly ? 'nocursor' : false
+  });
 
-  _onEdit = () => {
-    if (!this.ignoreChangeEvent && this.editor) {
-      this.cachedValue = this.editor.getValue();
-      if (this.props.onEdit) {
-        this.props.onEdit(this.cachedValue);
-      }
-    }
-  };
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || !schema) return;
+    view.dispatch({ effects: updateSchema(schema) });
+  }, [schema, viewRef]);
 
-  /**
-   * Render a custom UI for CodeMirror's hint which includes additional info
-   * about the type and description for the selected context.
-   */
-  _onHasCompletion = (cm, data) => {
-    onHasCompletion(cm, data, this.props.onHintInformationRender);
-  };
-
-  _onBeforeChange(_instance, change) {
-    const normalizeWhitespace = (line) => {
-      // Unicode whitespace characters that break the interface.
-      const invalidCharacters = Array.from({ length: 11 }, (_, i) => {
-        // \u2000 -> \u200a
-        return String.fromCharCode(0x2000 + i);
-      }).concat(['\u2028', '\u2029', '\u202f', '\u00a0']);
-
-      const sanitizeRegex = new RegExp('[' + invalidCharacters.join('') + ']', 'g');
-      return line.replace(sanitizeRegex, ' ');
+  useEffect(() => {
+    return () => {
+      cleanupRef.current.linkAware?.();
+      cleanupRef.current.resize?.();
+      cleanupRef.current.keyup?.();
     };
+  }, []);
 
-    // The update function is only present on non-redo, non-undo events.
-    if (change.origin === 'paste') {
-      const text = change.text.map(normalizeWhitespace);
-      change.update(change.from, change.to, text);
-    }
-  }
-}
+  return (
+    <StyledWrapper
+      ref={wrapperRef}
+      className="h-full w-full flex flex-col relative graphiql-container"
+      aria-label="Query Editor"
+      font={font}
+      fontSize={fontSize}
+    >
+      <div className="bruno-cm6-editor h-full w-full" ref={setContainer} />
+    </StyledWrapper>
+  );
+});
+
+export default QueryEditor;
