@@ -1,254 +1,159 @@
-import React, { Component } from 'react';
-import isEqual from 'lodash/isEqual';
-import { getAllVariables } from 'utils/collections';
-import { defineCodeMirrorBrunoVariablesMode } from 'utils/common/codemirror';
-import { setupAutoComplete } from 'utils/codemirror/autocomplete';
-import { MaskedEditor } from 'utils/common/masked-editor';
-import StyledWrapper from './StyledWrapper';
-import { setupLinkAware } from 'utils/codemirror/linkAware';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTheme } from 'styled-components';
 import { IconEye, IconEyeOff } from '@tabler/icons';
+import { keymap } from '@codemirror/view';
+import { getAllVariables } from 'utils/collections';
+import { PRESETS } from 'components/BrunoCodeEditor/presets';
+import { useBrunoExtensions } from 'components/BrunoCodeEditor/useBrunoExtensions';
+import { useBrunoCodeMirror } from 'components/BrunoCodeEditor/useBrunoCodeMirror';
+import { brunoVariablesHighlight } from 'utils/codemirror6/extensions/brunoVariablesHighlight';
+import { setupAutoComplete6 } from 'utils/codemirror6/extensions/autocomplete';
+import { setupLinkAware6 } from 'utils/codemirror6/extensions/linkAware';
+import { setupBrunoVarInfo6 } from 'utils/codemirror6/extensions/brunoVarInfo';
+import { createMaskedEditor6 } from 'utils/codemirror6/extensions/maskedEditor';
+import StyledWrapper from './StyledWrapper';
 
-const CodeMirror = require('codemirror');
+const SERVER_RENDERED = typeof window === 'undefined' || global['PREVENT_CODEMIRROR_RENDER'] === true;
 
-class MultiLineEditor extends Component {
-  constructor(props) {
-    super(props);
-    // Keep a cached version of the value, this cache will be updated when the
-    // editor is updated, which can later be used to protect the editor from
-    // unnecessary updates during the update lifecycle.
-    this.cachedValue = props.value || '';
-    this.editorRef = React.createRef();
-    this.variables = {};
-    this.readOnly = props.readOnly || false;
+export default function MultiLineEditor({
+  value = '',
+  theme,
+  placeholder,
+  readOnly = false,
+  onChange,
+  collection,
+  item,
+  isSecret = false,
+  hideSecretEye = false,
+  onMaskChange,
+  autocomplete = [],
+  enableBrunoVarInfo = true,
+  className = '',
+  testId,
+  name
+}) {
+  const styledTheme = useTheme();
+  const cachedRef = useRef(value);
+  const maskedRef = useRef(null);
+  const cleanupRef = useRef({});
+  const editorViewRef = useRef(null);
+  const [maskInput, setMaskInput] = useState(isSecret);
 
-    this.state = {
-      maskInput: props.isSecret || false // Always mask the input by default (if it's a secret)
-    };
-  }
+  const variables = getAllVariables(collection, item);
 
-  componentDidMount() {
-    // Initialize CodeMirror as a single line editor
-    /** @type {import("codemirror").Editor} */
-    const variables = getAllVariables(this.props.collection, this.props.item);
-    /**
-     * No-op. We claim Cmd-Enter / Ctrl-Enter here only to suppress CodeMirror's
-     * sublime keymap default (insertLineAfter), which would otherwise insert a
-     * newline. sendRequest dispatch is owned by Mousetrap — the editor input has
-     * the `mousetrap` class (added below) so the global
-     * useKeybinding('sendRequest', …) in RequestTabPanel handles it, and only
-     * in request tabs. Falling through with CodeMirror.Pass when onRun is absent
-     * would re-introduce the newline in collection/folder-level editors.
-     */
-    const runShortcut = () => {};
+  const inlineKeys = useMemo(() => keymap.of([
+    { key: 'Mod-f', run: () => true },
+    { key: 'Tab', run: () => true },
+    { key: 'Shift-Tab', run: () => true },
+    { key: 'Mod-Enter', run: () => true }
+  ]), []);
 
-    this.editor = CodeMirror(this.editorRef.current, {
-      lineWrapping: false,
-      lineNumbers: false,
-      theme: this.props.theme === 'dark' ? 'monokai' : 'default',
-      placeholder: this.props.placeholder,
-      mode: 'brunovariables',
-      brunoVarInfo: this.props.enableBrunoVarInfo !== false ? {
-        variables,
-        collection: this.props.collection,
-        item: this.props.item
-      } : false,
-      readOnly: this.props.readOnly,
-      tabindex: 0,
-      extraKeys: {
-        'Cmd-F': () => {},
-        'Ctrl-F': () => {},
-        'Cmd-Enter': runShortcut,
-        'Ctrl-Enter': runShortcut,
-        // Tabbing disabled to make tabindex work
-        'Tab': false,
-        'Shift-Tab': false
-      }
-    });
+  const extraExtensions = useMemo(() => [
+    brunoVariablesHighlight(variables, { highlightPathParams: false }),
+    inlineKeys
+  ], [variables, inlineKeys]);
 
-    const getAllVariablesHandler = () => getAllVariables(this.props.collection, this.props.item);
-    const getAnywordAutocompleteHints = () => this.props.autocomplete || [];
+  const extensions = useBrunoExtensions({
+    preset: PRESETS.INLINE_MULTI,
+    mode: 'text/plain',
+    theme,
+    styledTheme,
+    readOnly,
+    enableLint: false,
+    extraExtensions
+  });
 
-    // Setup AutoComplete Helper
-    const autoCompleteOptions = {
-      showHintsFor: ['variables'],
-      getAllVariables: getAllVariablesHandler,
-      getAnywordAutocompleteHints
-    };
+  const handleChange = useCallback((newValue) => {
+    cachedRef.current = newValue;
+    onChange?.(newValue);
+    requestAnimationFrame(() => editorViewRef.current?.requestMeasure());
+  }, [onChange]);
 
-    this.brunoAutoCompleteCleanup = setupAutoComplete(
-      this.editor,
-      autoCompleteOptions
-    );
-
-    setupLinkAware(this.editor);
-
-    // Add mousetrap calss so Mousetrap captures shortcuts even when Codemirror is focused
-    const cmInput = this.editor.getInputField();
-    if (cmInput) {
-      cmInput.classList.add('mousetrap');
-    }
-
-    this.editor.setValue(String(this.props.value) || '');
-    this.editor.on('change', this._onEdit);
-    this.editor.on('blur', this._onBlur);
-    this.addOverlay(variables);
-
-    // Initialize masking if this is a secret field
-    this.setState({ maskInput: this.props.isSecret }, () => {
-      this.props.onMaskChange?.(this.state.maskInput);
-    });
-    this._enableMaskedEditor(this.props.isSecret);
-  }
-
-  _onBlur = () => {
-    if (this.editor) {
-      this.editor.setCursor(this.editor.getCursor());
-    }
-  };
-
-  _onEdit = () => {
-    if (!this.ignoreChangeEvent && this.editor) {
-      this.cachedValue = this.editor.getValue();
-      if (this.props.onChange) {
-        this.props.onChange(this.cachedValue);
-      }
-      requestAnimationFrame(() => this.editor?.refresh());
-    }
-  };
-
-  /** Enable or disable masking the rendered content of the editor */
-  _enableMaskedEditor = (enabled) => {
-    if (typeof enabled !== 'boolean') return;
-
-    if (enabled == true) {
-      if (!this.maskedEditor) this.maskedEditor = new MaskedEditor(this.editor, '*');
-      this.maskedEditor.enable();
-    } else {
-      if (this.maskedEditor) {
-        this.maskedEditor.disable();
-        this.maskedEditor.destroy();
-        this.maskedEditor = null;
-      }
-    }
-  };
-
-  componentDidUpdate(prevProps) {
-    // Ensure the changes caused by this update are not interpreted as
-    // user-input changes which could otherwise result in an infinite
-    // event loop.
-    this.ignoreChangeEvent = true;
-
-    let variables = getAllVariables(this.props.collection, this.props.item);
-    if (!isEqual(variables, this.variables)) {
-      if (this.props.enableBrunoVarInfo !== false && this.editor.options.brunoVarInfo) {
-        this.editor.options.brunoVarInfo.variables = variables;
-      }
-      this.addOverlay(variables);
-    }
-
-    // Update collection and item when they change
-    if (this.props.enableBrunoVarInfo !== false && this.editor.options.brunoVarInfo) {
-      if (!isEqual(this.props.collection, this.editor.options.brunoVarInfo.collection)) {
-        this.editor.options.brunoVarInfo.collection = this.props.collection;
-      }
-      if (!isEqual(this.props.item, this.editor.options.brunoVarInfo.item)) {
-        this.editor.options.brunoVarInfo.item = this.props.item;
-      }
-    }
-    if (this.props.theme !== prevProps.theme && this.editor) {
-      this.editor.setOption('theme', this.props.theme === 'dark' ? 'monokai' : 'default');
-    }
-    if (this.props.readOnly !== prevProps.readOnly && this.editor) {
-      this.editor.setOption('readOnly', this.props.readOnly);
-    }
-    if (this.props.value !== prevProps.value && this.props.value !== this.cachedValue && this.editor) {
-      const cursor = this.editor.getCursor();
-      this.cachedValue = String(this.props.value);
-      this.editor.setValue(String(this.props.value) || '');
-      this.editor.setCursor(cursor);
-      // Re-apply masking after setValue() since it destroys all CodeMirror marks
-      if (this.maskedEditor && this.maskedEditor.isEnabled()) {
-        this.maskedEditor.update();
-      }
-      requestAnimationFrame(() => this.editor?.refresh());
-    }
-    if (!isEqual(this.props.isSecret, prevProps.isSecret)) {
-      // If the secret flag has changed, update the editor to reflect the change
-      this._enableMaskedEditor(this.props.isSecret);
-      // also set the maskInput flag to the new value
-      this.setState({ maskInput: this.props.isSecret }, () => {
-        this.props.onMaskChange?.(this.state.maskInput);
+  const { setContainer } = useBrunoCodeMirror({
+    value,
+    extensions,
+    onChange: handleChange,
+    onCreateEditor: (view) => {
+      editorViewRef.current = view;
+      cleanupRef.current.autocomplete = setupAutoComplete6(view, {
+        showHintsFor: ['variables'],
+        getAllVariables: () => getAllVariables(collection, item),
+        getAnywordAutocompleteHints: () => autocomplete || []
       });
-    }
-    if (this.props.readOnly !== prevProps.readOnly && this.editor) {
-      this.editor.setOption('readOnly', this.props.readOnly || false);
-    }
-    if (this.props.placeholder !== prevProps.placeholder && this.editor) {
-      this.editor.setOption('placeholder', this.props.placeholder);
-    }
-    this.ignoreChangeEvent = false;
-  }
+      cleanupRef.current.linkAware = setupLinkAware6(view);
+      if (enableBrunoVarInfo) {
+        cleanupRef.current.varInfo = setupBrunoVarInfo6(view, {
+          variables,
+          collection,
+          item
+        });
+      }
+      if (isSecret) {
+        maskedRef.current = createMaskedEditor6(view);
+        maskedRef.current.enable();
+      }
+    },
+    readOnly
+  });
 
-  componentWillUnmount() {
-    if (this.brunoAutoCompleteCleanup) {
-      this.brunoAutoCompleteCleanup();
+  useEffect(() => {
+    if (isSecret) {
+      if (!maskedRef.current && editorViewRef.current) {
+        maskedRef.current = createMaskedEditor6(editorViewRef.current);
+      }
+      maskedRef.current?.enable();
+      setMaskInput(true);
+      onMaskChange?.(true);
+    } else {
+      maskedRef.current?.disable();
+      maskedRef.current?.destroy();
+      maskedRef.current = null;
+      setMaskInput(false);
+      onMaskChange?.(false);
     }
-    if (this.editor?._destroyLinkAware) {
-      this.editor._destroyLinkAware();
-    }
-    if (this.maskedEditor) {
-      this.maskedEditor.destroy();
-      this.maskedEditor = null;
-    }
-    if (this.editor) {
-      this.editor.off('change', this._onEdit);
-      this.editor.off('blur', this._onBlur);
-      this.editor.getWrapperElement().remove();
-    }
-  }
+  }, [isSecret, onMaskChange]);
 
-  addOverlay = (variables) => {
-    this.variables = variables;
-    defineCodeMirrorBrunoVariablesMode(variables, 'text/plain', false, true);
-    this.editor.setOption('mode', 'brunovariables');
+  useEffect(() => {
+    return () => {
+      cleanupRef.current.autocomplete?.();
+      cleanupRef.current.linkAware?.();
+      cleanupRef.current.varInfo?.();
+      maskedRef.current?.destroy();
+    };
+  }, []);
+
+  const toggleVisibleSecret = () => {
+    const next = !maskInput;
+    setMaskInput(next);
+    if (next) {
+      if (!maskedRef.current && editorViewRef.current) {
+        maskedRef.current = createMaskedEditor6(editorViewRef.current);
+      }
+      maskedRef.current?.enable();
+    } else {
+      maskedRef.current?.disable();
+    }
+    onMaskChange?.(next);
   };
 
-  /**
-   * @brief Toggle the visibility of the secret value
-   */
-  toggleVisibleSecret = () => {
-    const maskInput = !this.state.maskInput;
-    this.setState({ maskInput }, () => {
-      this._enableMaskedEditor(maskInput);
-      this.props.onMaskChange?.(maskInput);
-    });
-  };
-
-  /**
-   * @brief Eye icon to show/hide the secret value
-   * @returns ReactComponent The eye icon
-   */
-  secretEye = (isSecret) => {
-    return isSecret === true ? (
-      <button className="mx-2" data-testid="secret-reveal-toggle" onClick={() => this.toggleVisibleSecret()}>
-        {this.state.maskInput === true ? (
-          <IconEyeOff size={18} strokeWidth={2} />
-        ) : (
-          <IconEye size={18} strokeWidth={2} />
-        )}
-      </button>
-    ) : null;
-  };
-
-  render() {
-    const wrapperClass = `multi-line-editor grow ${this.props.readOnly ? 'read-only' : ''}`;
-    const testId = this.props.testId ?? (this.props.name ? `test-multiline-editor-${this.props.name}` : undefined);
-    return (
-      <div data-testid={testId} className={`flex flex-row justify-between w-full overflow-x-auto ${this.props.className}`}>
-        <StyledWrapper ref={this.editorRef} className={wrapperClass} />
-        {!this.props.hideSecretEye && this.secretEye(this.props.isSecret)}
-      </div>
-    );
+  if (SERVER_RENDERED) {
+    return <div className={`flex flex-row justify-between w-full overflow-x-auto ${className}`} />;
   }
+
+  const wrapperTestId = testId ?? (name ? `test-multiline-editor-${name}` : undefined);
+
+  return (
+    <div data-testid={wrapperTestId} className={`flex flex-row justify-between w-full overflow-x-auto ${className}`}>
+      <StyledWrapper
+        ref={setContainer}
+        className={`multi-line-editor grow bruno-cm6-editor ${readOnly ? 'read-only' : ''}`}
+        placeholder={placeholder}
+      />
+      {!hideSecretEye && isSecret && (
+        <button type="button" className="mx-2" data-testid="secret-reveal-toggle" onClick={toggleVisibleSecret}>
+          {maskInput ? <IconEyeOff size={18} strokeWidth={2} /> : <IconEye size={18} strokeWidth={2} />}
+        </button>
+      )}
+    </div>
+  );
 }
-export default MultiLineEditor;
