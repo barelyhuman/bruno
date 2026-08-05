@@ -92,9 +92,9 @@ export default defineConfig({
             // pulling them into their own initial chunk lets the browser
             // fetch it in parallel with the main bundle instead of inflating
             // one monolithic file.
-            codemirror: {
-              test: /[\\/]node_modules[\\/]codemirror(-.*)?[\\/]/,
-              name: 'lib-codemirror',
+            codemirror6: {
+              test: /[\\/]node_modules[\\/]@codemirror[\\/]/,
+              name: 'lib-codemirror6',
               chunks: 'all',
               priority: 10
             },

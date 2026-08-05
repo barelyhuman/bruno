@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import get from 'lodash/get';
 import { updateResponseExampleResponse } from 'providers/ReduxStore/slices/collections';
 import CodeEditor from 'components/CodeEditor';
-import { getCodeMirrorModeBasedOnContentType } from 'utils/common/codemirror';
+import { getCodeMirrorModeBasedOnContentType } from 'utils/codemirror6/languages';
 import StyledWrapper from './StyledWrapper';
 
 const ResponseExampleResponseContent = ({ editMode, item, collection, exampleUid, onSave }) => {
