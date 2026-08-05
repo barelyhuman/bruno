@@ -2,12 +2,9 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { useTheme } from 'styled-components';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { attachE2eShim, detachE2eShim } from 'utils/codemirror6/e2eShim';
-import { createCm5Compat } from 'utils/codemirror6/compat';
+import { attachE2EShim, detachE2EShim } from 'utils/codemirror6/e2eShim';
 import { useBrunoExtensions, NO_EXTRA_EXTENSIONS } from './useBrunoExtensions';
 import { PRESETS } from './presets';
-
-const SERVER_RENDERED = typeof window === 'undefined' || global['PREVENT_CODEMIRROR_RENDER'] === true;
 
 /**
  * Base CM6 code editor used by all migrated Bruno editor wrappers.
@@ -56,7 +53,7 @@ const BrunoCodeEditor = React.forwardRef(function BrunoCodeEditor(
   }, []);
 
   useEffect(() => {
-    if (!containerRef.current || SERVER_RENDERED) return;
+    if (!containerRef.current) return;
 
     const updateListener = EditorView.updateListener.of((update) => {
       if (update.docChanged) {
@@ -74,8 +71,7 @@ const BrunoCodeEditor = React.forwardRef(function BrunoCodeEditor(
     });
 
     const view = new EditorView({ state, parent: containerRef.current });
-    attachE2eShim(view);
-    createCm5Compat(view);
+    attachE2EShim(view);
     viewRef.current = view;
 
     if (typeof ref === 'function') {
@@ -85,7 +81,7 @@ const BrunoCodeEditor = React.forwardRef(function BrunoCodeEditor(
     }
 
     return () => {
-      detachE2eShim(view);
+      detachE2EShim(view);
       view.destroy();
       viewRef.current = null;
     };
@@ -112,10 +108,6 @@ const BrunoCodeEditor = React.forwardRef(function BrunoCodeEditor(
     });
     ignoreChangeRef.current = false;
   }, [value]);
-
-  if (SERVER_RENDERED) {
-    return <div className={className} style={style} />;
-  }
 
   return (
     <div

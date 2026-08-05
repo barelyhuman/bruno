@@ -9,19 +9,6 @@ import {
 import { lintGutter } from '@codemirror/lint';
 import { search, searchKeymap, openSearchPanel } from '@codemirror/search';
 import { EditorState, Prec } from '@codemirror/state';
-import { compatExtension } from '../compat';
-
-/**
- * Fire compat 'change' listeners on doc updates.
- */
-export function compatChangeListener() {
-  return EditorView.updateListener.of((update) => {
-    if (!update.docChanged) return;
-    const compat = update.view._cm5Compat;
-    if (!compat?._changeListeners) return;
-    compat._changeListeners.forEach((h) => h(compat, update));
-  });
-}
 
 /**
  * Standard Bruno editor extensions shared across presets.
@@ -33,8 +20,6 @@ export function baseSetup({
   tabSize
 } = {}) {
   const extensions = [
-    ...compatExtension(),
-    compatChangeListener(),
     history(),
     drawSelection(),
     indentOnInput(),

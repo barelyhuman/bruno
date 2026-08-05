@@ -1,12 +1,14 @@
 /**
+ *  Copyright (c) 2021 GraphQL Contributors.
+ *
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file in the root directory of this source tree.
  * ApiSpec YAML/JSON file editor — migrated to CodeMirror 6.
  */
 
 import React, { useCallback } from 'react';
 import BrunoCodeEditor, { PRESETS } from 'components/BrunoCodeEditor';
 import StyledWrapper from './StyledWrapper';
-
-const SERVER_RENDERED = typeof window === 'undefined' || global['PREVENT_CODEMIRROR_RENDER'] === true;
 
 export default function CodeEditor({
   value = '',
@@ -19,16 +21,6 @@ export default function CodeEditor({
   const handleChange = useCallback((newValue) => {
     onEdit?.(newValue);
   }, [onEdit]);
-
-  if (SERVER_RENDERED) {
-    return (
-      <StyledWrapper
-        className="h-full w-full graphiql-container"
-        aria-label="Code Editor"
-        font={font}
-      />
-    );
-  }
 
   return (
     <StyledWrapper
