@@ -1,0 +1,362 @@
+import React, { useState, useEffect, useRef, useCallback, forwardRef } from 'react';
+import { EditorView } from '@codemirror/view';
+import { IconRegex, IconArrowUp, IconArrowDown, IconX, IconLetterCase, IconLetterW, IconChevronRight, IconReplace, IconArrowsExchange2 } from '@tabler/icons';
+import ToolHint from 'components/ToolHint';
+import StyledWrapper from 'components/CodeMirrorSearch/StyledWrapper';
+import useDebounce from 'hooks/useDebounce';
+import { replaceSingle, replaceAll } from './replaceUtils';
+import { findSearchMatches, createCacheKey } from './searchUtils';
+import { markViewportMatches, clearMarks } from './markingUtils';
+import { lineChToPos, getCursorLineCh } from './posUtils';
+import { useSearchBarHandle } from './useSearchBarHandle';
+
+const CodeMirrorSearch6 = forwardRef(({ visible, view, value, readOnly, onClose }, ref) => {
+  const [searchText, setSearchText] = useState('');
+  const [replaceText, setReplaceText] = useState('');
+  const [replaceVisible, setReplaceVisible] = useState(false);
+  const [regex, setRegex] = useState(false);
+  const [caseSensitive, setCaseSensitive] = useState(false);
+  const [wholeWord, setWholeWord] = useState(false);
+  const [matchIndex, setMatchIndex] = useState(0);
+  const [matchCount, setMatchCount] = useState(0);
+
+  const searchMatches = useRef([]);
+  const searchCacheKey = useRef('');
+  const currentMatchIndex = useRef(0);
+  const docVersion = useRef(0);
+  const inputRef = useRef(null);
+  const replaceInputRef = useRef(null);
+  const containerRef = useRef(null);
+  const initialIndexRef = useRef(null);
+  const pendingSearchIndexRef = useRef(null);
+  const rafRef = useRef(null);
+
+  const debouncedSearchText = useDebounce(searchText, 250);
+
+  const redrawMarks = useCallback(() => {
+    if (!view) return;
+    markViewportMatches(view, searchMatches.current, currentMatchIndex.current);
+  }, [view]);
+
+  const doSearch = useCallback((text, newIndex = 0, preferLine = null, shouldScroll = false) => {
+    if (!view || !visible) return;
+
+    if (!text) {
+      setMatchCount(0);
+      setMatchIndex(0);
+      currentMatchIndex.current = 0;
+      searchMatches.current = [];
+      searchCacheKey.current = '';
+      clearMarks(view);
+      return;
+    }
+
+    try {
+      const newCacheKey = createCacheKey(docVersion.current, text, regex, caseSensitive, wholeWord);
+      const isCacheHit = newCacheKey === searchCacheKey.current;
+
+      let matches = searchMatches.current;
+      if (!isCacheHit) {
+        matches = findSearchMatches(view, text, regex, caseSensitive, wholeWord);
+        searchMatches.current = matches;
+        searchCacheKey.current = newCacheKey;
+        setMatchCount(matches.length);
+
+        if (preferLine !== null && newIndex === 0) {
+          const nearestIdx = matches.findIndex((m) => m.from.line >= preferLine);
+          newIndex = nearestIdx >= 0 ? nearestIdx : 0;
+        }
+      }
+
+      if (!matches.length) {
+        setMatchIndex(0);
+        currentMatchIndex.current = 0;
+        clearMarks(view);
+        return;
+      }
+
+      const resolvedIndex = Math.max(0, Math.min(newIndex, matches.length - 1));
+      setMatchIndex(resolvedIndex);
+      currentMatchIndex.current = resolvedIndex;
+
+      redrawMarks();
+
+      const doc = view.state.doc;
+      const from = lineChToPos(doc, matches[resolvedIndex].from);
+      const to = lineChToPos(doc, matches[resolvedIndex].to);
+
+      view.dispatch({
+        selection: { anchor: from, head: to },
+        effects: shouldScroll ? EditorView.scrollIntoView(from, { y: 'center' }) : undefined
+      });
+    } catch (e) {
+      console.error('Search error:', e);
+      setMatchCount(0);
+      setMatchIndex(0);
+      currentMatchIndex.current = 0;
+      searchMatches.current = [];
+      searchCacheKey.current = '';
+    }
+  }, [regex, caseSensitive, wholeWord, view, visible, redrawMarks]);
+
+  const handleSearchBarClose = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (view) clearMarks(view);
+    searchMatches.current = [];
+    searchCacheKey.current = '';
+    currentMatchIndex.current = 0;
+    setReplaceVisible(false);
+    if (onClose) onClose();
+    if (view) {
+      const cursor = view.state.selection.main.from;
+      view.dispatch({ selection: { anchor: cursor, head: cursor } });
+      setTimeout(() => view.focus(), 0);
+    }
+  }, [view, onClose]);
+
+  const isDebouncing = searchText !== debouncedSearchText;
+
+  useSearchBarHandle({
+    ref,
+    view,
+    searchText,
+    regex,
+    caseSensitive,
+    wholeWord,
+    searchMatches,
+    searchCacheKey,
+    docVersion,
+    initialIndexRef,
+    inputRef,
+    replaceInputRef,
+    setSearchText,
+    setMatchCount,
+    setMatchIndex,
+    setReplaceVisible,
+    doSearch,
+    handleSearchBarClose
+  });
+
+  useEffect(() => {
+    if (initialIndexRef.current && debouncedSearchText !== initialIndexRef.current.forText) {
+      return;
+    }
+
+    if (initialIndexRef.current && initialIndexRef.current.forText === debouncedSearchText) {
+      const idx = initialIndexRef.current.idx;
+      initialIndexRef.current = null;
+      doSearch(debouncedSearchText, idx);
+    } else {
+      initialIndexRef.current = null;
+      const cursor = view ? getCursorLineCh(view) : null;
+      const cursorLine = cursor ? cursor.line : null;
+      doSearch(debouncedSearchText, 0, cursorLine);
+    }
+  }, [debouncedSearchText, doSearch, view]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !visible) return;
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleSearchBarClose();
+      }
+    };
+
+    container.addEventListener('keydown', onKeyDown, true);
+    return () => container.removeEventListener('keydown', onKeyDown, true);
+  }, [visible, handleSearchBarClose]);
+
+  useEffect(() => {
+    if (!view || !visible) return;
+
+    const handleScroll = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        redrawMarks();
+      });
+    };
+
+    view.scrollDOM.addEventListener('scroll', handleScroll);
+    return () => {
+      view.scrollDOM.removeEventListener('scroll', handleScroll);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [view, visible, redrawMarks]);
+
+  // Re-run search when the document value changes (typing / replace / external edit).
+  useEffect(() => {
+    if (!visible || !view) return;
+    docVersion.current += 1;
+    searchCacheKey.current = '';
+    const idx = pendingSearchIndexRef.current ?? currentMatchIndex.current;
+    pendingSearchIndexRef.current = null;
+    const timeoutId = setTimeout(() => {
+      doSearch(debouncedSearchText, idx);
+    }, 100);
+    return () => clearTimeout(timeoutId);
+  }, [value]);
+
+  const handleNext = () => {
+    if (isDebouncing || !searchMatches.current?.length) return;
+    doSearch(debouncedSearchText, (matchIndex + 1) % searchMatches.current.length, null, true);
+  };
+
+  const handlePrev = () => {
+    if (isDebouncing || !searchMatches.current?.length) return;
+    doSearch(
+      debouncedSearchText,
+      (matchIndex - 1 + searchMatches.current.length) % searchMatches.current.length,
+      null,
+      true
+    );
+  };
+
+  const handleReplace = useCallback(() => {
+    if (!view || !searchMatches.current.length) return;
+    if (!searchMatches.current[matchIndex]) return;
+
+    const { endLine, endCh } = replaceSingle(view, searchMatches.current, matchIndex, replaceText);
+
+    const newMatches = findSearchMatches(view, debouncedSearchText, regex, caseSensitive, wholeWord);
+    searchMatches.current = newMatches;
+    searchCacheKey.current = createCacheKey(docVersion.current, debouncedSearchText, regex, caseSensitive, wholeWord);
+    setMatchCount(newMatches.length);
+
+    const nextIdx = newMatches.findIndex(
+      (m) => m.from.line > endLine || (m.from.line === endLine && m.from.ch >= endCh)
+    );
+    const resolvedNextIdx = nextIdx >= 0 ? nextIdx : 0;
+    pendingSearchIndexRef.current = resolvedNextIdx;
+    doSearch(debouncedSearchText, resolvedNextIdx, null, true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }, [view, matchIndex, replaceText, debouncedSearchText, regex, caseSensitive, wholeWord, doSearch]);
+
+  const handleReplaceAll = useCallback(() => {
+    if (!view || !searchMatches.current.length) return;
+
+    const allMatches = findSearchMatches(view, debouncedSearchText, regex, caseSensitive, wholeWord, Infinity);
+    replaceAll(view, allMatches, replaceText);
+
+    searchCacheKey.current = '';
+    doSearch(debouncedSearchText, 0);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }, [view, replaceText, debouncedSearchText, regex, caseSensitive, wholeWord, doSearch]);
+
+  const isReplaceDisabled = isDebouncing || !searchText.trim() || matchCount === 0;
+
+  if (!visible) return null;
+
+  return (
+    <StyledWrapper $replaceVisible={replaceVisible}>
+      <div className="bruno-search-bar" ref={containerRef} data-testid="codemirror-search-bar">
+        <button
+          type="button"
+          className={`toggle-replace-btn${replaceVisible ? ' active' : ''}`}
+          title={replaceVisible ? 'Hide replace' : 'Show replace'}
+          onClick={() => setReplaceVisible((prev) => !prev)}
+          style={readOnly ? { display: 'none' } : {}}
+          data-testid="toggle-replace-btn"
+        >
+          <IconChevronRight
+            size={12}
+            style={{ transform: replaceVisible ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
+          />
+        </button>
+        <div className="search-replace-rows">
+          <div className="search-row">
+            <input
+              ref={inputRef}
+              autoFocus
+              type="text"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search..."
+              spellCheck={false}
+              data-testid="codemirror-search-input"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && replaceVisible && !isReplaceDisabled) {
+                  e.preventDefault();
+                  handleReplaceAll();
+                } else if (e.key === 'Enter' && !e.shiftKey) {
+                  handleNext();
+                } else if (e.key === 'Enter' && e.shiftKey) {
+                  handlePrev();
+                }
+              }}
+            />
+            <span className="searchbar-result-count" data-testid="codemirror-search-result-count">
+              {isDebouncing ? '...' : matchCount > 0 ? `${matchIndex + 1} / ${matchCount}` : '0 results'}
+            </span>
+            <ToolHint text="Regex search" toolhintId="searchbar-regex-toolhint" place="top">
+              <button
+                type="button"
+                className={`searchbar-icon-btn ${regex ? 'active' : ''}`}
+                onClick={() => {
+                  setRegex((p) => !p); setMatchIndex(0);
+                }}
+                data-testid="codemirror-search-regex-btn"
+              ><IconRegex size={16} />
+              </button>
+            </ToolHint>
+            <ToolHint text="Case sensitive" toolhintId="searchbar-case-toolhint" place="top">
+              <button
+                type="button"
+                className={`searchbar-icon-btn ${caseSensitive ? 'active' : ''}`}
+                onClick={() => {
+                  setCaseSensitive((p) => !p); setMatchIndex(0);
+                }}
+                data-testid="codemirror-search-case-btn"
+              ><IconLetterCase size={14} />
+              </button>
+            </ToolHint>
+            <ToolHint text="Whole word" toolhintId="searchbar-wholeword-toolhint" place="top">
+              <button
+                type="button"
+                className={`searchbar-icon-btn ${wholeWord ? 'active' : ''}`}
+                onClick={() => {
+                  setWholeWord((p) => !p); setMatchIndex(0);
+                }}
+                data-testid="codemirror-search-wholeword-btn"
+              ><IconLetterW size={14} />
+              </button>
+            </ToolHint>
+            <button type="button" className="searchbar-icon-btn" title="Previous (Shift+Enter)" onClick={handlePrev} data-testid="codemirror-search-prev-btn"><IconArrowUp size={14} /></button>
+            <button type="button" className="searchbar-icon-btn" title="Next (Enter)" onClick={handleNext} data-testid="codemirror-search-next-btn"><IconArrowDown size={14} /></button>
+            <button type="button" className="searchbar-icon-btn" title="Close" onClick={handleSearchBarClose} data-testid="codemirror-search-close-btn"><IconX size={14} /></button>
+          </div>
+          {replaceVisible && !readOnly && (
+            <div className="replace-row">
+              <input
+                ref={replaceInputRef}
+                type="text"
+                value={replaceText}
+                onChange={(e) => setReplaceText(e.target.value)}
+                placeholder="Replace..."
+                spellCheck={false}
+                data-testid="codemirror-search-replace-input"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !isReplaceDisabled) {
+                    e.preventDefault();
+                    handleReplaceAll();
+                  } else if (e.key === 'Enter' && !isReplaceDisabled) {
+                    handleReplace();
+                  }
+                }}
+              />
+              <ToolHint text="Replace" toolhintId="searchbar-replace-toolhint" place="top">
+                <button type="button" aria-label="Replace" className="searchbar-icon-btn" disabled={isReplaceDisabled} onClick={handleReplace} data-testid="codemirror-search-replace-btn"><IconReplace size={15} /></button>
+              </ToolHint>
+              <ToolHint text="Replace all" toolhintId="searchbar-replaceall-toolhint" place="top">
+                <button type="button" aria-label="Replace all" className="searchbar-icon-btn" disabled={isReplaceDisabled} onClick={handleReplaceAll} data-testid="codemirror-search-replaceall-btn"><IconArrowsExchange2 size={15} /></button>
+              </ToolHint>
+            </div>
+          )}
+        </div>
+      </div>
+    </StyledWrapper>
+  );
+});
+
+export default CodeMirrorSearch6;

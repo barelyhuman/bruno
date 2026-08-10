@@ -36,12 +36,15 @@ const FileEditor = ({ item, collection }) => {
     dispatch(toggleCollectionFileMode({ collectionUid: collection.uid }));
   };
 
-  const editorMode = item?.type == 'js' ? 'javascript' : item?.type == 'json' ? 'javascript' : 'application/text';
+  // File mode edits raw .bru (plain text) or OpenCollection .yml/.yaml
+  const isYamlFile = /\.ya?ml$/i.test(item?.filename || item?.pathname || '');
+  const editorMode = isYamlFile ? 'application/yaml' : 'application/text';
 
   return (
     <div className="flex flex-grow relative h-full">
       <CodeEditor
         collection={collection}
+        item={item}
         theme={displayedTheme}
         value={content}
         onEdit={onEdit}

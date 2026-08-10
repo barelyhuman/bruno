@@ -52,10 +52,16 @@ export function useBrunoExtensions({
         })
       : brunoThemeExtension(cmTheme, { isDark, font, fontSize });
 
+    const isFileYaml = preset === PRESETS.FILE && isYamlMode(languageMode);
+    const showLintGutter
+      = preset === PRESETS.APISPEC
+        || isFileYaml
+        || preset === PRESETS.FULL;
+
     const extensions = [
       ...baseSetup({
         lineNumbers: !isInline,
-        lintGutter: preset === PRESETS.APISPEC || preset === PRESETS.FILE || preset === PRESETS.FULL,
+        lintGutter: showLintGutter,
         enableSearch: hasNativeSearch,
         tabSize: isInline ? undefined : 2
       }),
@@ -73,7 +79,9 @@ export function useBrunoExtensions({
     }
 
     if (enableLint) {
-      if (preset === PRESETS.APISPEC || preset === PRESETS.FILE || preset === PRESETS.FULL) {
+      if (preset === PRESETS.APISPEC || isFileYaml) {
+        extensions.push(brunoYamlLinter());
+      } else if (preset === PRESETS.FULL) {
         if (isYamlMode(languageMode)) {
           extensions.push(brunoYamlLinter());
         } else if (isJsonMode(languageMode)) {
@@ -82,6 +90,7 @@ export function useBrunoExtensions({
           extensions.push(brunoJavaScriptLinter(LINT_OPTIONS));
         }
       }
+      // PRESETS.FILE plain text: no language linter
     }
 
     return extensions;
