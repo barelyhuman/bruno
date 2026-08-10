@@ -38,12 +38,13 @@ const ThemeDropdown = ({ children }) => {
     themeVariantLight,
     themeVariantDark,
     setThemeVariantLight,
-    setThemeVariantDark
+    setThemeVariantDark,
+    customThemesRegistry
   } = useTheme();
 
   // Theme data
-  const lightThemes = getLightThemes();
-  const darkThemes = getDarkThemes();
+  const lightThemes = getLightThemes(customThemesRegistry);
+  const darkThemes = getDarkThemes(customThemesRegistry);
   const isSystemMode = storedTheme === 'system';
 
   // Helper to get class names for focusable items

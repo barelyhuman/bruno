@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { rgba } from 'polished';
 import { useTheme } from 'providers/Theme';
-import themes, { getLightThemes, getDarkThemes } from 'themes/index';
-import { IconBrightnessUp, IconMoon, IconDeviceDesktop } from '@tabler/icons';
+import { getLightThemes, getDarkThemes } from 'themes/index';
+import { IconBrightnessUp, IconMoon, IconDeviceDesktop, IconUpload, IconTrash, IconDownload } from '@tabler/icons';
 import StyledWrapper from './StyledWrapper';
 
-const ThemePreview = ({ themeId, isDark }) => {
-  const theme = themes[themeId] || themes[isDark ? 'dark' : 'light'];
+const ThemePreview = ({ themeId, isDark, themesMap }) => {
+  const theme = themesMap[themeId] || themesMap[isDark ? 'dark' : 'light'];
 
   const bgColor = theme.background.base;
   const sidebarColor = theme.sidebar.bg;
@@ -24,13 +24,41 @@ const ThemePreview = ({ themeId, isDark }) => {
   );
 };
 
-const ThemeVariantCard = ({ theme, isSelected, onClick }) => {
+const ThemeVariantCard = ({ theme, isSelected, onClick, onDelete, onExport, themesMap }) => {
   const isDark = theme.mode === 'dark';
+  const isCustom = Boolean(theme.custom);
 
   return (
     <div className={`theme-variant-card ${isSelected ? 'selected' : ''}`} onClick={onClick}>
-      <ThemePreview themeId={theme.id} isDark={isDark} />
-      <span className="theme-variant-name">{theme.name}</span>
+      <ThemePreview themeId={theme.id} isDark={isDark} themesMap={themesMap} />
+      <span className="theme-variant-name">
+        {theme.name}
+        {isCustom && <span className="theme-custom-badge">Custom</span>}
+      </span>
+      {isCustom && (
+        <div className="theme-variant-actions" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            className="theme-action-btn"
+            title="Export theme"
+            onClick={() => onExport(theme.id)}
+          >
+            <IconDownload size={14} strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            className="theme-action-btn danger"
+            title="Remove theme"
+            onClick={() => {
+              if (window.confirm(`Remove custom theme "${theme.name}"?`)) {
+                onDelete(theme.id);
+              }
+            }}
+          >
+            <IconTrash size={14} strokeWidth={1.5} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -42,11 +70,18 @@ const Themes = () => {
     themeVariantLight,
     setThemeVariantLight,
     themeVariantDark,
-    setThemeVariantDark
+    setThemeVariantDark,
+    allThemes,
+    customThemesRegistry,
+    importCustomTheme,
+    removeCustomTheme,
+    exportCustomTheme
   } = useTheme();
 
-  const lightThemes = getLightThemes();
-  const darkThemes = getDarkThemes();
+  const fileInputRef = useRef(null);
+
+  const lightThemes = getLightThemes(customThemesRegistry);
+  const darkThemes = getDarkThemes(customThemesRegistry);
 
   const themeModes = [
     { key: 'light', label: 'Light', icon: IconBrightnessUp },
@@ -58,16 +93,30 @@ const Themes = () => {
     setStoredTheme(mode);
   };
 
-  const renderThemeVariants = (themes, selectedVariant, onSelect, label) => (
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    await importCustomTheme(file);
+  };
+
+  const renderThemeVariants = (themeList, selectedVariant, onSelect, label) => (
     <div className="theme-variant-section">
       <div className="theme-variant-label">{label}</div>
       <div className="theme-variants">
-        {themes.map((theme) => (
+        {themeList.map((theme) => (
           <ThemeVariantCard
             key={theme.id}
             theme={theme}
             isSelected={selectedVariant === theme.id}
             onClick={() => onSelect(theme.id)}
+            onDelete={removeCustomTheme}
+            onExport={exportCustomTheme}
+            themesMap={allThemes}
           />
         ))}
       </div>
@@ -77,8 +126,21 @@ const Themes = () => {
   return (
     <StyledWrapper>
       <div className="flex flex-col gap-4 w-full appearance-container">
-        <div>
+        <div className="flex items-center justify-between gap-3">
           <div className="section-header">Appearance</div>
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,.yml,.yaml,application/json,text/yaml,text/x-yaml"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <button type="button" className="import-theme-btn" onClick={handleImportClick}>
+              <IconUpload size={14} strokeWidth={1.5} />
+              Import theme
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-3 theme-mode-selector justify-start">

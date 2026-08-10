@@ -1,0 +1,58 @@
+# Custom theme — palette overlay
+#
+# Provide either `base` (built-in theme id) or `mode` (light|dark).
+# Palette sections mirror themes/light/light.js: primary, hues, background, text,
+# overlay, border, utility, system. Intent/syntax are optional — derived from hues
+# when omitted. Optional `overrides` deep-merge onto the resolved theme.
+
+id: ocean-dark
+name: Ocean Dark
+base: dark
+palette:
+  primary:
+    solid: "#3b82f6"
+    text: "#60a5fa"
+    strong: "#2563eb"
+    subtle: "#93c5fd"
+  hues:
+    red: "#ef4444"
+    rose: "#fb7185"
+    brown: "#d97706"
+    orange: "#f59e0b"
+    yellow: "#eab308"
+    green: "#22c55e"
+    teal: "#14b8a6"
+    cyan: "#06b6d4"
+    blue: "#3b82f6"
+    indigo: "#6366f1"
+    violet: "#8b5cf6"
+    purple: "#a855f7"
+    pink: "#ec4899"
+  system:
+    controlAccent: "#38bdf8"
+  background:
+    base: "#0f172a"
+    mantle: "#1e293b"
+    crust: "#334155"
+    surface0: "#1e293b"
+    surface1: "#334155"
+    surface2: "#475569"
+  text:
+    base: "#e2e8f0"
+    subtext2: "#cbd5e1"
+    subtext1: "#94a3b8"
+    subtext0: "#64748b"
+  overlay:
+    overlay2: "#64748b"
+    overlay1: "#475569"
+    overlay0: "#334155"
+  border:
+    border2: "#475569"
+    border1: "#334155"
+    border0: "#1e293b"
+  utility:
+    white: "#ffffff"
+    black: "#000000"
+overrides:
+  sidebar:
+    bg: "#1e293b"

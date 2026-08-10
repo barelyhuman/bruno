@@ -97,7 +97,12 @@ export const themeRegistry = {
   }
 };
 
-export const getLightThemes = () => Object.values(themeRegistry).filter((t) => t.mode === 'light');
-export const getDarkThemes = () => Object.values(themeRegistry).filter((t) => t.mode === 'dark');
+const mergeRegistry = (customRegistry = {}) => ({ ...themeRegistry, ...customRegistry });
+
+export const getLightThemes = (customRegistry = {}) =>
+  Object.values(mergeRegistry(customRegistry)).filter((t) => t.mode === 'light');
+
+export const getDarkThemes = (customRegistry = {}) =>
+  Object.values(mergeRegistry(customRegistry)).filter((t) => t.mode === 'dark');
 
 export default themes;

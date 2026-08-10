@@ -1,0 +1,20 @@
+{
+  "id": "dark-sidebar-tweak",
+  "name": "Dark Sidebar Tweak",
+  "base": "dark",
+  "overrides": {
+    "sidebar": {
+      "bg": "#111827"
+    },
+    "brand": "#38bdf8",
+    "primary": {
+      "solid": "#38bdf8",
+      "text": "#7dd3fc",
+      "strong": "#0ea5e9",
+      "subtle": "#bae6fd"
+    },
+    "accents": {
+      "primary": "#38bdf8"
+    }
+  }
+}

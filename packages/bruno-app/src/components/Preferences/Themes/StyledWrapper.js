@@ -90,6 +90,63 @@ const StyledWrapper = styled.div`
   .theme-variant-name {
     font-size: ${(props) => props.theme.font.size.sm};
     color: ${(props) => props.theme.text};
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .theme-custom-badge {
+    font-size: 10px;
+    color: ${(props) => props.theme.colors.text.muted};
+    border: 1px solid ${(props) => props.theme.input.border};
+    border-radius: ${(props) => props.theme.border.radius.sm};
+    padding: 0 4px;
+    line-height: 1.4;
+  }
+
+  .theme-variant-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .theme-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 4px;
+    border: 1px solid ${(props) => props.theme.input.border};
+    border-radius: ${(props) => props.theme.border.radius.sm};
+    background: transparent;
+    color: ${(props) => props.theme.colors.text.muted};
+    cursor: pointer;
+
+    &:hover {
+      border-color: ${(props) => props.theme.input.focusBorder};
+      color: ${(props) => props.theme.text};
+    }
+
+    &.danger:hover {
+      border-color: ${(props) => props.theme.colors.text.danger};
+      color: ${(props) => props.theme.colors.text.danger};
+    }
+  }
+
+  .import-theme-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid ${(props) => props.theme.input.border};
+    border-radius: ${(props) => props.theme.border.radius.md};
+    background: transparent;
+    color: ${(props) => props.theme.text};
+    font-size: ${(props) => props.theme.font.size.sm};
+    cursor: pointer;
+
+    &:hover {
+      border-color: ${(props) => props.theme.accents.primary};
+    }
   }
 
   .section-divider {
