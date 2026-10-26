@@ -6,14 +6,10 @@
  */
 
 import React from 'react';
-import MD from 'markdown-it';
+import { safeMarkdown } from '../../utils/safeMarkdown';
+import { handleSafeMarkdownLinkClick } from '../../utils/safeMarkdownLinkClick';
 
 type Maybe<T> = T | null | undefined;
-
-const md = new MD({
-  // render urls as links, à la github-flavored markdown
-  linkify: true
-});
 
 type MarkdownContentProps = {
   markdown?: Maybe<string>;
@@ -25,5 +21,11 @@ export default function MarkdownContent({ markdown, className }: MarkdownContent
     return <div />;
   }
 
-  return <div className={className} dangerouslySetInnerHTML={{ __html: md.render(markdown) }} />;
+  return (
+    <div
+      className={className}
+      onClick={handleSafeMarkdownLinkClick}
+      dangerouslySetInnerHTML={{ __html: safeMarkdown.render(markdown) }}
+    />
+  );
 }

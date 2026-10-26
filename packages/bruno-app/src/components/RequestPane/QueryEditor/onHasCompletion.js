@@ -5,11 +5,10 @@
  *  LICENSE file in the root directory of this source tree.
  */
 import escapeHTML from 'escape-html';
-import MD from 'markdown-it';
+import { safeMarkdown } from 'utils/safeMarkdown';
+import { handleSafeMarkdownLinkClick } from 'utils/safeMarkdownLinkClick';
 
 import { GraphQLNonNull, GraphQLList } from 'graphql';
-
-const md = new MD();
 
 /**
  * Render a custom UI for CodeMirror's hint which includes additional info
@@ -32,6 +31,7 @@ export default function onHasCompletion(_cm, data, onHintInformationRender) {
       // highlighted typeahead option.
       information = document.createElement('div');
       information.className = 'CodeMirror-hint-information';
+      information.addEventListener('click', handleSafeMarkdownLinkClick);
       hintsUl.appendChild(information);
 
       // This "deprecation" node will contain info about deprecated usage.
@@ -56,7 +56,7 @@ export default function onHasCompletion(_cm, data, onHintInformationRender) {
     }
 
     // Now that the UI has been set up, add info to information.
-    const description = ctx.description ? md.render(ctx.description) : 'Self descriptive.';
+    const description = ctx.description ? safeMarkdown.render(ctx.description) : 'Self descriptive.';
     const type = ctx.type ? '<span className="infoType">' + renderType(ctx.type) + '</span>' : '';
 
     information.innerHTML
@@ -65,7 +65,7 @@ export default function onHasCompletion(_cm, data, onHintInformationRender) {
         + '</div>';
 
     if (ctx && deprecation && ctx.deprecationReason) {
-      const reason = ctx.deprecationReason ? md.render(ctx.deprecationReason) : '';
+      const reason = ctx.deprecationReason ? safeMarkdown.render(ctx.deprecationReason) : '';
       deprecation.innerHTML = '<span className="deprecation-label">Deprecated</span>' + reason;
       deprecation.style.display = 'block';
     } else if (deprecation) {

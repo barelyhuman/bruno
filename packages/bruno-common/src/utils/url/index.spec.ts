@@ -7,7 +7,8 @@ import {
   safeDecodeURIComponent,
   stripOrigin,
   extractMockRoutePath,
-  getMockResponseRouteKey
+  getMockResponseRouteKey,
+  isSafeUrl
 } from './index';
 
 describe('encodeUrl', () => {
@@ -415,6 +416,30 @@ describe('safeDecodeURIComponent', () => {
 
   it('should be a no-op when there is nothing to decode', () => {
     expect(safeDecodeURIComponent('hello')).toBe('hello');
+  });
+});
+
+describe('isSafeUrl', () => {
+  it('accepts http and https URLs', () => {
+    expect(isSafeUrl('https://example.com')).toBe(true);
+    expect(isSafeUrl('http://localhost:8080/path')).toBe(true);
+  });
+
+  it('accepts scheme-less references', () => {
+    expect(isSafeUrl('./assets/logo.png')).toBe(true);
+    expect(isSafeUrl('docs/page')).toBe(true);
+  });
+
+  it('rejects dangerous explicit schemes', () => {
+    expect(isSafeUrl('javascript:alert(1)')).toBe(false);
+    expect(isSafeUrl('file:///etc/passwd')).toBe(false);
+    expect(isSafeUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
+    expect(isSafeUrl('bruno://open')).toBe(false);
+  });
+
+  it('rejects empty and non-string values', () => {
+    expect(isSafeUrl('')).toBe(false);
+    expect(isSafeUrl(null as unknown as string)).toBe(false);
   });
 });
 

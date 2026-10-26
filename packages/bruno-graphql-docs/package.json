@@ -12,7 +12,11 @@
     "build": "rollup -c",
     "watch": "rollup -c -w"
   },
+  "dependencies": {
+    "@usebruno/common": "0.1.0"
+  },
   "devDependencies": {
+    "@usebruno/common": "0.1.0",
     "@rollup/plugin-commonjs": "^23.0.2",
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@rollup/plugin-typescript": "^9.0.2",

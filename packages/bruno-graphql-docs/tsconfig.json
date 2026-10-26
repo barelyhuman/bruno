@@ -12,7 +12,11 @@
     "moduleResolution": "node",
     "emitDeclarationOnly": true,
     "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": "../..",
+    "paths": {
+      "@usebruno/common/utils": ["packages/bruno-common/dist/utils/index.d.ts"]
+    }
   },
   "exclude": [
     "dist",
