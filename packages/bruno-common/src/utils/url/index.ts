@@ -326,10 +326,36 @@ const isSameOrigin = (url1: string, url2: string): boolean => {
   }
 };
 
+const isHttpUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+// Allowlist rather than denylist: accept http(s) URLs and scheme-less
+// references (e.g. a docs-relative path like ./assets/logo.png), reject
+// anything else with an explicit protocol (javascript:, data:, file:, ...).
+const isSafeUrl = (url: string): boolean => {
+  if (typeof url !== 'string' || !url.length) {
+    return false;
+  }
+
+  if (isHttpUrl(url)) {
+    return true;
+  }
+
+  return !/^[a-z][a-z0-9+.-]*:/i.test(url);
+};
+
 export {
   DEFAULT_SCHEME,
   getExplicitScheme,
   hasExplicitScheme,
+  isHttpUrl,
+  isSafeUrl,
   encodeUrl,
   parseQueryParams,
   buildQueryString,

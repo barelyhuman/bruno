@@ -1,7 +1,7 @@
 import find from 'lodash/find';
 
 import { interpolate } from '@usebruno/common';
-import { DEFAULT_SCHEME, hasExplicitScheme } from '@usebruno/common/utils';
+import { DEFAULT_SCHEME, hasExplicitScheme, isHttpUrl, isSafeUrl } from '@usebruno/common/utils';
 import { version as appVersion } from '../../../package.json';
 
 /**
@@ -135,29 +135,7 @@ export const prependDefaultScheme = (url) => {
   return `${DEFAULT_SCHEME}${url}`;
 };
 
-export const isHttpUrl = (url) => {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-};
-
-// Allowlist rather than denylist: accept http(s) URLs and scheme-less
-// references (e.g. a docs-relative path like ./assets/logo.png), reject
-// anything else with an explicit protocol (javascript:, data:, file:, ...).
-export const isSafeUrl = (url) => {
-  if (typeof url !== 'string' || !url.length) {
-    return false;
-  }
-
-  if (isHttpUrl(url)) {
-    return true;
-  }
-
-  return !/^[a-z][a-z0-9+.-]*:/i.test(url);
-};
+export { isHttpUrl, isSafeUrl };
 
 export const interpolateUrl = ({ url, variables }) => {
   if (!url || !url.length || typeof url !== 'string') {
